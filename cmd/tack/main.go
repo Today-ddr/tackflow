@@ -11,14 +11,18 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
+	tack "github.com/today/tack"
 	"github.com/today/tack/internal/api"
 	"github.com/today/tack/internal/auth"
 	"github.com/today/tack/internal/config"
 	"github.com/today/tack/internal/store"
+	"github.com/today/tack/internal/update"
 	"github.com/today/tack/web"
 )
 
@@ -77,7 +81,8 @@ func serve(getenv func(string) string, stdout io.Writer) error {
 	}
 	defer func() { _ = st.Close() }()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	if err := st.Migrate(ctx); err != nil {
 		return err
 	}
@@ -86,14 +91,30 @@ func serve(getenv func(string) string, stdout io.Writer) error {
 	}
 
 	logger := slog.New(slog.NewTextHandler(stdout, nil))
-	handler := api.NewServer(
+	updateService := update.NewService(
+		st,
+		update.NewChecker(cfg.GitHubRepo, cfg.GitHubToken),
+		version,
+		time.Now,
+		logger,
+	)
+	updateService.Start(ctx)
+	go startMaintenance(ctx, cfg, st, logger)
+
+	apiServer := api.NewServer(
 		cfg,
 		st,
 		web.Assets(),
 		api.BuildInfo{Version: version, Commit: commit, BuildTime: buildTime},
 		logger,
 		time.Now,
-	).Handler()
+	)
+	apiServer.SetChangelog(tack.Changelog)
+	apiServer.SetUpdateService(
+		updateService,
+		update.NewUpdaterClient(cfg.UpdaterURL, cfg.UpdaterToken),
+	)
+	handler := apiServer.Handler()
 	server := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           handler,
@@ -115,8 +136,9 @@ func serve(getenv func(string) string, stdout io.Writer) error {
 		}
 		return err
 	case <-stop.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+		cancel()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shutdownCancel()
 		return server.Shutdown(shutdownCtx)
 	}
 }
@@ -127,8 +149,8 @@ func ensureAdmin(ctx context.Context, cfg config.Config, st *store.Store) error 
 	} else if !errors.Is(err, store.ErrNotFound) {
 		return err
 	}
-	if len([]rune(cfg.AdminPassword)) < 12 {
-		return fmt.Errorf("TACK_ADMIN_PASSWORD must be at least 12 characters on first boot")
+	if err := auth.ValidatePassword(cfg.AdminPassword); err != nil {
+		return fmt.Errorf("TACK_ADMIN_PASSWORD is invalid on first boot: %w", err)
 	}
 	hash, err := auth.HashPassword(cfg.AdminPassword)
 	if err != nil {
@@ -203,4 +225,85 @@ func healthcheckURL(getenv func(string) string) string {
 		host = "127.0.0.1"
 	}
 	return "http://" + net.JoinHostPort(host, port) + "/healthz"
+}
+
+func startMaintenance(
+	ctx context.Context,
+	cfg config.Config,
+	st *store.Store,
+	logger *slog.Logger,
+) {
+	run := func() {
+		now := time.Now().In(cfg.Timezone)
+		today := now.Format("2006-01-02")
+		last, ok, err := st.GetSetting(ctx, "maintenance.daily_date")
+		if err != nil {
+			logger.Warn("read maintenance setting", "error", err)
+			return
+		}
+		if !ok || last != today {
+			destination := filepath.Join(
+				cfg.DataDir,
+				"backups",
+				"daily-"+now.Format("20060102")+".db",
+			)
+			if _, statErr := os.Stat(destination); errors.Is(statErr, os.ErrNotExist) {
+				if err := st.Backup(ctx, destination); err != nil {
+					logger.Warn("daily backup failed", "error", err)
+				} else {
+					logger.Info("daily backup written", "path", destination)
+				}
+			}
+			if err := pruneBackups(filepath.Dir(destination), "daily-", 14); err != nil {
+				logger.Warn("prune daily backups failed", "error", err)
+			}
+			if err := st.SetSetting(ctx, "maintenance.daily_date", today); err != nil {
+				logger.Warn("write maintenance setting", "error", err)
+			}
+		}
+		if purged, err := st.PurgeTrash(ctx, time.Now().UTC().AddDate(0, 0, -30)); err != nil {
+			logger.Warn("purge trash failed", "error", err)
+		} else if purged > 0 {
+			logger.Info("purged trashed tasks", "count", purged)
+		}
+	}
+
+	run()
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
+}
+
+func pruneBackups(dir, prefix string, keep int) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	names := make([]string, 0)
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasPrefix(entry.Name(), prefix) &&
+			strings.HasSuffix(entry.Name(), ".db") {
+			names = append(names, entry.Name())
+		}
+	}
+	if len(names) <= keep {
+		return nil
+	}
+	sort.Strings(names)
+	for _, name := range names[:len(names)-keep] {
+		if err := os.Remove(filepath.Join(dir, name)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
