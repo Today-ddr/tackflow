@@ -282,7 +282,7 @@ CREATE TABLE idempotency (
 ```
 
 - 每个响应带 `X-Request-Id`；日志同一份 id。
-- 变更类请求支持 `Idempotency-Key`，24 小时内重复 key 返回首次结果。
+- 变更类请求支持 `Idempotency-Key`，按 Token/Session、方法、路径隔离；24 小时内重复 key 返回首次成功结果。受限任务重放前重新验证资源权限。
 - 分页用 cursor：`?limit=100&cursor=...`，响应带 `next_cursor`。
 
 ### 11.2 路由
@@ -313,7 +313,7 @@ CREATE TABLE idempotency (
 | `GET/POST` | `/projects` | 项目列表 / 新建 |
 | `PATCH/DELETE` | `/projects/{id}` | 改名、配色、归档 |
 | `GET/POST` | `/tags` | 标签 |
-| `DELETE` | `/tags/{id}` | 删除标签（只解绑，不删卡） |
+| `PATCH/DELETE` | `/tags/{id}` | 改名配色 / 删除标签（只解绑，不删卡） |
 
 **认证**
 
@@ -339,12 +339,14 @@ CREATE TABLE idempotency (
 | `POST` | `/update/apply` | `{version, password}`，需要 sudo，转给 updater |
 | `POST` | `/update/rollback` | 回滚到上一版本，需要 sudo |
 
-**Agent（v1.1）**
+**Agent（M5）**
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| `GET` | `/agent/next` | 取一张 `agent_ready` 的 todo 卡；`?claim=1` 直接移到 doing |
-| `POST` | `/agent/tasks/{id}/result` | 写结果、评论、移动到 review/done |
+| `GET` | `/agent/next` | 只读预览一张 `agent_ready` 的 todo 卡，拒绝 `?claim=1` |
+| `POST` | `/agent/claim` | 原子领取，移到 doing，返回 claim id 和 30 分钟租约 |
+| `POST` | `/agent/tasks/{id}/heartbeat` | 验证领取主体和 claim id，续租 |
+| `POST` | `/agent/tasks/{id}/result` | 同事务写结果、评论、外链和状态，默认 review |
 
 ### 11.3 capture 语法
 
@@ -362,13 +364,13 @@ CREATE TABLE idempotency (
 
 ### 12.1 结论
 
-**密码 + Session Cookie + API Token；Passkey（WebAuthn）放到 v1.1。**
+**密码 + Session Cookie + API Token + Passkey（WebAuthn）。**
 
 不接微信登录：个人主体申请网站应用需要企业资质和备案域名，审批周期长，PWA 里跳转体验也差。
 
 不接 Sign in with Apple：需要 Apple Developer Program（$99/年）、Service ID、域名验证、client secret 定期轮换，收益不匹配。
 
-Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码和 **Passkey**。所以真正的“Bitwarden / Apple 快速鉴权”是 Passkey——v1.1 加上 WebAuthn，登录时用 Face ID / 指纹，密钥存在 iCloud 钥匙串或 Bitwarden 里。
+Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码和 **Passkey**。快速鉴权通过 WebAuthn 完成，密钥由 iCloud 钥匙串或 Bitwarden 等认证器保存。服务端使用 go-webauthn 验证签名，要求用户验证；挑战绑定用途、会话或登录浏览器，5 分钟内单次使用。密码登录始终保留。
 
 ### 12.2 密码
 
@@ -397,6 +399,8 @@ Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码
 - 新建或撤销 API token
 - 修改密码
 - 删除项目
+- 注册或删除 Passkey
+- 新建、修改或删除 Webhook
 
 ### 12.6 传输与头部
 
@@ -883,7 +887,15 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 | M4 打磨 | 搜索、⌘K、暗色、PWA、导出、备份 | 日常自用一周无阻断 |
 | M5 扩展 | Passkey、Codeg bridge、webhook、SSE | 按需 |
 
-当前实现状态（2026-11-16）：M0–M4 已落地并通过本地质量门、Docker 构建、浏览器登录/看板/capture 和 API 探针。更新链路已具备 app 检查、侧栏红点、可调频率、updater、备份和失败回滚；M5 扩展不包含在 `v0.2.0`。
+当前实现状态（2026-11-16）：M0–M4 已落地；工作分支在 `v0.2.0` 基础上追加 M5，尚未发布新版本。更新链路继续使用 app 检查、侧栏红点、可调频率、updater、备份和失败回滚。
+
+M5 包含 Passkey、独立 Codeg bridge、持久化 Webhook 与 Session SSE；同时补齐回收站、项目/标签管理、全部游标页加载、搜索前缀和 Token 资源范围。详细接口见 `docs/api.md`，桥接配置见 `docs/codeg-bridge.md`。真实设备 Passkey、实际 Codeg 执行和公网接收端需在对应部署环境验收。
+
+Token 的项目和标签数组为空表示该维度不限制，维度内 OR、维度间 AND；旧 Token 不变。受限 Token 不能写全局分类或自动创建标签，列表/导出计数不泄露范围外任务。
+
+Agent 只原子领取 `todo + agent_ready`，使用绑定主体的 30 分钟租约；GET 只预览，POST 领取。心跳续租，结果默认 `review`；过期或人工改动后旧 worker 不能回写。
+
+SQLite 事务内写入资源事件；SSE 用持久化序号恢复，Webhook 用持久化投递队列重试并签名。Webhook 默认禁止内网目标和跳转，秘密仅保存在本地数据库，不出现在导出和日志。数据库和备份文件权限为 0600。
 
 ## 21. 风险
 
@@ -902,7 +914,7 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 1. 自建，不套 Vikunja。
 2. 单用户、单板；项目是彩色分类。
 3. Go + SQLite + React/Vite + shadcn/ui。
-4. 密码 + Session + API Token；Passkey 放 v1.1；不接微信 / Apple / Bitwarden OAuth。
+4. 密码 + Session + API Token + Passkey；不接微信 / Apple / Bitwarden OAuth。
 5. updater sidecar 负责更新，app 不碰 docker.sock。
 6. 更新默认每天检查一次，频率可调；侧栏红点提示。
 7. AI 负责改版本和 changelog，推送必须人工点头。
@@ -914,5 +926,4 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 
 - 域名（部署前定）。
 - GitHub owner（仓库名已定 `tack`；若远端被占用，备选 `cork`、`docket`）。
-- Codeg bridge 的落点与实现放到 v1.1 再定。
-- Passkey、Codeg bridge、webhook、SSE 放到 M5；v0.2.0 不做。
+- M5 发布版本号与目标部署环境（当前仅本地提交，不自动发布）。

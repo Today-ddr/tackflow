@@ -198,6 +198,20 @@ curl -fsS https://tack.example.com/api/v1/version
 - iOS 快捷指令：创建「获取 URL 内容」请求，方法 `POST`，URL 为 `https://tack.example.com/api/v1/capture`，Authorization 为 `Bearer tk_...`，请求体 `{"text":"..."}`。
 - Token 在「设置 → API 令牌」创建，明文只显示一次。
 
+## M5 功能配置
+
+- 「设置 → 项目与标签」管理分类与归档；「回收站」恢复删除未满 30 天的任务。删除标签只解绑任务。受限 Token 的项目/标签范围在创建时固定，需要调整时新建并撤销旧 Token。
+- Passkey 在账户设置注册，需要最近验证过密码。RP ID 固定为 `TACK_PUBLIC_URL` 的主机名；更换域名后旧 Passkey 不能在新域名登录，请先保留密码访问并重新注册。生产必须 HTTPS，localhost 可开发验证。系统认证取消不会影响密码登录。
+- SSE 随 app 启动，浏览器断线后按事件序号恢复；反向代理需允许长连接和即时 flush。Caddy `reverse_proxy` 可直接传递 `text/event-stream`。故障时先检查 `/api/v1/events` 的响应类型、心跳与 Session 是否有效。
+- Webhook 在集成设置管理，新增后立即保存唯一展示的 secret。默认只允许 HTTPS 公网目标；创建时检查 DNS，投递时重新检查。仅受控本地测试设置 `TACK_WEBHOOK_ALLOW_PRIVATE=true`，默认 `false`。
+- 投递由 app 内的工作循环处理，重启后继续数据库队列；最多 5 次，单次 5 秒超时。界面展示投递状态和错误；接收方按 delivery ID 去重、检查时间戳并验证 HMAC。禁用/删除会取消待投递，已在网络中的请求可能完成。
+- 数据库包含 Webhook 签名密钥；`tack.db`、WAL/SHM、备份均须私密保存，备份不能公开下载。JSON/CSV 导出不包含密钥、Session、Passkey 或 Token。
+- `make build` 额外生成 `bin/tack-bridge`。桥接作为独立进程显式启动，不随 app/compose 自动执行任务。配置、只读检查和恢复方法见 [Codeg bridge](codeg-bridge.md)。
+
+升级前运行 `make check`，备份数据库，再按现有更新流程部署。新增迁移为 0003–0009，保留原任务、Session 和无资源限制的 Token。删除授权标签会撤销引用该标签的 Token；任务物理清理后编号不复用。幂等缓存由 Session secret 加密，恢复数据库时保留原密钥；`idempotency_uncertain` 表示应先查现状再决定重试，不能直接换 key 再发。当前工作分支尚未打新版本 tag；部署域名和 GitHub owner 沿用操作者的环境配置。
+
+验证 Passkey 时应在真实 HTTPS 域名或 localhost 使用系统认证器完成注册、退出、重新登录、删除；自动化签名测试不能替代系统 Face ID/指纹体验。桥接首次使用先执行 `--check`，再在专用测试项目中放一张 `todo + agent_ready` 卡，检查 Codeg 任务、心跳和回写；不要用生产任务作冒烟测试。
+
 ## 安全边界
 
 - 公网只暴露 Caddy 的 80/443。
