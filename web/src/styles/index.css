@@ -1824,6 +1824,52 @@ dialog::backdrop {
 .task-links { display: grid; gap: 0.5rem; overflow-wrap: anywhere; }
 .task-links a { color: var(--accent); }
 
+.connection-steps {
+  margin: 0.85rem 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+.connection-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0;
+  font-size: 0.8rem;
+}
+
+.connection-address code {
+  flex: 1;
+  min-width: min(12rem, 100%);
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
+.connection-guide-dialog {
+  width: min(46rem, calc(100vw - 2rem));
+}
+
+.connection-guide {
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.agent-connections .settings-select { width: 100%; }
+.agent-connections .token-create { max-width: none; }
+
 .settings-card-heading {
   display: flex;
   align-items: flex-start;

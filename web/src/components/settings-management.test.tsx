@@ -137,7 +137,7 @@ it("sends token resource scopes, displays their names and keeps the secret once-
     const url = String(input);
     if (url.includes("/projects")) return json({ projects: [project] });
     if (url.endsWith("/tags")) return json({ tags: [tag] });
-    if (url.endsWith("/tokens") && init?.method === "POST") { payload = JSON.parse(String(init.body)) as Record<string, unknown>; return json({ token: "tk_secret_once" }, 201); }
+    if (url.endsWith("/tokens") && init?.method === "POST") { payload = JSON.parse(String(init.body)) as Record<string, unknown>; return json({ token: "tk_secret_once", api_token: { id: 2, name: "agent", prefix: "tk_secret", scopes: ["read"], project_ids: [1], tag_ids: [2], created_at: "2026-11-17T01:00:00Z", expires_at: null, last_used_at: null } }, 201); }
     if (url.endsWith("/tokens")) return json({ tokens: [{ id: 1, name: "受限脚本", prefix: "tk_prefix", scopes: ["read"], project_ids: [1], tag_ids: [2], created_at: "2026-11-16T06:00:00Z", last_used_at: null }] });
     return json({});
   }));
@@ -145,7 +145,7 @@ it("sends token resource scopes, displays their names and keeps the secret once-
   await view.user.type(screen.getByLabelText("名称"), "agent");
   await view.user.click(await screen.findByLabelText("项目：Codeg"));
   await view.user.click(screen.getByLabelText("标签：bug"));
-  await view.user.click(screen.getByRole("button", { name: "生成令牌" }));
+  await view.user.click(screen.getByRole("button", { name: "生成 API Key" }));
   expect(await screen.findByText("tk_secret_once")).toBeInTheDocument();
   expect(payload).toMatchObject({ name: "agent", project_ids: [1], tag_ids: [2] });
   expect(screen.getByText(/项目：Codeg · 标签：bug/)).toBeInTheDocument();
@@ -158,12 +158,12 @@ it("sends token resource scopes, displays their names and keeps the secret once-
 it("sends empty resource arrays when a token is unrestricted", async () => {
   let payload: Record<string, unknown> | undefined;
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (String(input).endsWith("/tokens") && init?.method === "POST") { payload = JSON.parse(String(init.body)) as Record<string, unknown>; return json({ token: "tk_unrestricted" }, 201); }
+    if (String(input).endsWith("/tokens") && init?.method === "POST") { payload = JSON.parse(String(init.body)) as Record<string, unknown>; return json({ token: "tk_unrestricted", api_token: { id: 2, name: "我的脚本", prefix: "tk_unres", scopes: ["read"], project_ids: [], tag_ids: [], created_at: "2026-11-17T01:00:00Z", expires_at: null, last_used_at: null } }, 201); }
     return json({ tokens: [], projects: [], tags: [] });
   }));
   const { user } = mount("tokens");
   await user.type(screen.getByLabelText("名称"), "我的脚本");
-  await user.click(screen.getByRole("button", { name: "生成令牌" }));
+  await user.click(screen.getByRole("button", { name: "生成 API Key" }));
   await screen.findByText("tk_unrestricted");
   expect(payload).toMatchObject({ project_ids: [], tag_ids: [] });
 });

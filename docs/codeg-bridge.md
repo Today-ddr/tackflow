@@ -4,7 +4,7 @@
 
 ## 配置和首次检查
 
-1. 在 Tack「设置 → API 令牌」（`/settings/tokens`）创建专用令牌，选择 `read`、`write`，按提示输入当前密码。复制只显示一次的完整 `tk_...`。可限制项目/标签，队列会沿用该令牌的访问范围；`capture` 不需要。
+1. 在 Tack「设置 → Agent 连接」（`/settings/connections`，旧 `/settings/tokens` 仍有效）创建「任务执行」用途的专用 API Key（`write` 已包含 `read`、`capture`），按提示输入当前密码。复制只显示一次的完整 `tk_...`。可限制项目/标签，队列会沿用该令牌的访问范围；按运行周期设置有效期。轮换前先完成活跃任务，claim 绑定旧 Key，不能由新 Key 回写。
 2. 使用已启用 HTTP 服务的 Codeg 地址。Codeg server 使用 `CODEG_TOKEN` 作为访问令牌；bridge 的 `CODEG_API_TOKEN` 填同一个值。不要填 Tack token、代理模型的 API key 或 MCP 凭证。Codeg 的 proxy-jwt 模式也保留 Bearer 通道。
 3. 选择 Codeg 中已有的根项目 folder ID。它不是 Tack 的 project ID，也不是路径。可在 Codeg HTTP API `POST /api/list_all_folder_details`（body `{}`）返回的 `id/path/parent_id` 中确认，选择 `parent_id:null` 的目标；不要使用 `/api/list_folders`，后者返回按会话聚合的路径信息，没有 folder ID。先在 Codeg 中配置该项目的默认 agent、权限及执行设置。
 4. 将环境放在权限 `0600` 的本地文件或服务管理器配置中；不要提交凭证。

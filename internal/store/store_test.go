@@ -33,8 +33,8 @@ func TestOpenMigrateAndBootstrapAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion() error = %v", err)
 	}
-	if version != 9 {
-		t.Errorf("SchemaVersion() = %d, want 9", version)
+	if version != 10 {
+		t.Errorf("SchemaVersion() = %d, want 10", version)
 	}
 
 	var journalMode string
@@ -133,8 +133,8 @@ func TestMigrateUpgradesV1Database(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion() error = %v", err)
 	}
-	if version != 9 {
-		t.Fatalf("SchemaVersion() = %d, want 9", version)
+	if version != 10 {
+		t.Fatalf("SchemaVersion() = %d, want 10", version)
 	}
 	if _, err := st.SessionByID(ctx, "existing", now); err != nil {
 		t.Fatalf("existing session lost after migration: %v", err)
@@ -169,7 +169,7 @@ func TestMigratePreservesExistingUnrestrictedToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	token, err := st.APITokenByHash(t.Context(), "hash")
-	if err != nil || token.Name != "legacy" || len(token.ProjectIDs) != 0 || len(token.TagIDs) != 0 {
+	if err != nil || token.Name != "legacy" || len(token.ProjectIDs) != 0 || len(token.TagIDs) != 0 || token.ExpiresAt != nil {
 		t.Fatalf("migration changed existing token: %+v, %v", token, err)
 	}
 }

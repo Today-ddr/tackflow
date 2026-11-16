@@ -92,6 +92,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/changelog", s.handleChangelog)
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 	mux.Handle("GET /api/v1/auth/me", s.requireAuth(http.HandlerFunc(s.handleMe)))
+	mux.Handle("GET /api/v1/agent/connection", s.requireAuth(http.HandlerFunc(s.handleAgentConnection)))
 	mux.Handle("POST /api/v1/auth/logout", s.requireAuth(http.HandlerFunc(s.handleLogout)))
 	mux.Handle("POST /api/v1/auth/sudo", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleSudo))))
 	mux.Handle("POST /api/v1/auth/password", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handlePassword))))
@@ -179,7 +180,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 				return
 			}
 			apiToken, err := s.store.APITokenByHash(r.Context(), auth.HashAPIToken(rawToken))
-			if err != nil {
+			if err != nil || apiToken.ExpiresAt != nil && !apiToken.ExpiresAt.After(s.now().UTC()) {
 				s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "API 令牌无效")
 				return
 			}
@@ -199,7 +200,8 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 					return
 				}
 				defer func() { <-s.mutationGate }()
-				if _, err := s.store.APITokenByHash(r.Context(), apiToken.Hash); err != nil {
+				current, err := s.store.APITokenByHash(r.Context(), apiToken.Hash)
+				if err != nil || current.ExpiresAt != nil && !current.ExpiresAt.After(s.now().UTC()) {
 					s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "API 令牌已失效")
 					return
 				}

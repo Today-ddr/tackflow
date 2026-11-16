@@ -52,6 +52,24 @@ Token 不能管理 Token、Session、Passkey、Webhook、回收站、账户密�
 
 删除标签会同时撤销范围中引用该标签的 Token，避免标签 ID 重用后扩大旧凭证的权限；需要继续使用时重新创建 Token。任务 ID 使用持久单调序列，回收站清理后不复用。
 
+创建 Token 可选 `expires_at`：省略或 `null` 表示不过期，其他值必须为未来 365 天内的 RFC3339 时间。服务端归一为 UTC 秒精度；已到期的 Token 对所有认证接口返回 `401 unauthorized`，进入写锁后再次复核。旧 Token 无默认到期时间。管理列表保留已过期但未撤销的 Token，供查看和撤销。
+
+### 连接检查
+
+`GET /api/v1/agent/connection` 接受任意有效 Bearer Token（包括仅 `capture`）或网页 Session，无任务写入，响应 `Cache-Control: no-store`：
+
+```json
+{
+  "api_base_url": "https://tack.example.com/api/v1",
+  "auth_kind": "token",
+  "transport": "rest",
+  "mcp_supported": false,
+  "token": {"id":1,"name":"只读助手","prefix":"tk_example","scopes":["read"],"project_ids":[2],"tag_ids":[],"created_at":"2026-11-17T00:00:00Z","last_used_at":null,"expires_at":"2026-12-17T00:00:00Z"}
+}
+```
+
+Session 响应为 `auth_kind:"session", token:null`，不能据此判断 Key 可用。API 地址来自 `TACK_PUBLIC_URL`，不信任 Host/转发头。只返回当前凭证元数据，不包含 hash、明文、其他 Token 或任务。此请求会更新 Token 最近使用时间，不能证明 Agent 在线或远程网络可达。
+
 ### Sudo
 
 以下操作要求最近 5 分钟内验证过密码：
@@ -258,7 +276,7 @@ Token 不能管理 Token、Session、Passkey、Webhook、回收站、账户密�
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | `GET` | `/api/v1/tokens` | 返回 `{tokens:[...]}`，不含明文和哈希 |
-| `POST` | `/api/v1/tokens` | `{name, scopes, password?}`；返回一次明文和 `api_token` |
+| `POST` | `/api/v1/tokens` | `{name, scopes, project_ids?, tag_ids?, expires_at?, password?}`；返回一次明文和 `api_token` |
 | `DELETE` | `/api/v1/tokens/{id}` | 撤销；可带 `{password?}` |
 | `GET` | `/api/v1/sessions` | 当前用户未过期设备 |
 | `DELETE` | `/api/v1/sessions/{id}` | 移除设备；删除当前设备会清 Cookie |
@@ -268,6 +286,8 @@ Token 不能管理 Token、Session、Passkey、Webhook、回收站、账户密�
 ```json
 {"name":"iPhone 快捷指令","scopes":["capture","read"],"password":"当前密码"}
 ```
+
+`api_token` 和列表元素包含 `id/name/prefix/scopes/project_ids/tag_ids/created_at/last_used_at/expires_at`。到期参数非法返回 `422 invalid_expiry`。网页入口是 `/settings/connections`（`/settings/tokens` 仍可用），详细 Agent 接入步骤见 [Agent 连接](agent-connections.md)。
 
 ## 设置、更新与导出
 

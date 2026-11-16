@@ -16,10 +16,7 @@ import {
   api,
   downloadExport,
   errorMessage,
-  type APIToken,
   type Me,
-  type Project,
-  type Tag,
   type SessionInfo,
   type Settings,
   type UpdateStatus,
@@ -32,10 +29,9 @@ import { SudoDialog } from "./sudo-dialog";
 import { useToast } from "./toast";
 import { OrganizeSettings } from "./organize-settings";
 import { TrashSettings } from "./trash-settings";
-import { QueryFeedback } from "./query-feedback";
-import { SecretNotice } from "./secret-notice";
 import { PasskeySettings } from "./passkey-settings";
 import { IntegrationsSettings } from "./integrations-settings";
+import { AgentConnections } from "./agent-connections";
 
 interface SettingsPageProps {
   path: string;
@@ -44,12 +40,12 @@ interface SettingsPageProps {
   onLogout: () => void;
 }
 
-type SettingsTab = "general" | "account" | "tokens" | "update" | "data" | "organize" | "trash" | "integrations";
+type SettingsTab = "general" | "account" | "connections" | "update" | "data" | "organize" | "trash" | "integrations";
 
 const tabs: Array<{ id: SettingsTab; label: string; path: string }> = [
   { id: "general", label: "常规", path: "/settings" },
   { id: "account", label: "账户", path: "/settings/account" },
-  { id: "tokens", label: "API 令牌", path: "/settings/tokens" },
+  { id: "connections", label: "Agent 连接", path: "/settings/connections" },
   { id: "organize", label: "项目与标签", path: "/settings/organize" },
   { id: "trash", label: "回收站", path: "/settings/trash" },
   { id: "integrations", label: "集成", path: "/settings/integrations" },
@@ -58,7 +54,8 @@ const tabs: Array<{ id: SettingsTab; label: string; path: string }> = [
 ];
 
 export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps) {
-  const tab = (path.split("/")[2] || "general") as SettingsTab;
+  const segment = path.split("/")[2] || "general";
+  const tab = (segment === "tokens" ? "connections" : segment) as SettingsTab;
   const { notify } = useToast();
   const queryClient = useQueryClient();
   const settingsQuery = useQuery<Settings>({
@@ -76,7 +73,7 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
       <header className="settings-header">
         <div>
           <h1>设置</h1>
-          <p>数据、令牌与更新都在这里。</p>
+          <p>账户、连接与数据管理。</p>
         </div>
         <div className="settings-identity">
           <span className="avatar">{me.user.username.slice(0, 1).toUpperCase()}</span>
@@ -119,7 +116,7 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
         {tab === "account" ? (
           <AccountSettings me={me} onLogout={onLogout} notify={notify} />
         ) : null}
-        {tab === "tokens" ? <TokenSettings notify={notify} /> : null}
+        {tab === "connections" ? <AgentConnections /> : null}
         {tab === "organize" ? <OrganizeSettings /> : null}
         {tab === "trash" ? <TrashSettings /> : null}
         {tab === "integrations" ? <IntegrationsSettings /> : null}
@@ -359,205 +356,6 @@ function AccountSettings({
       </section>
       <p className="settings-meta">当前账户：{me.user.username}</p>
       <PasskeySettings />
-    </div>
-  );
-}
-
-function TokenSettings({
-  notify,
-}: {
-  notify: (message: string, tone?: "success" | "error" | "info") => void;
-}) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [scopes, setScopes] = useState<string[]>(["capture", "read"]);
-  const [projectIDs, setProjectIDs] = useState<number[]>([]);
-  const [tagIDs, setTagIDs] = useState<number[]>([]);
-  const [password, setPassword] = useState("");
-  const [plainToken, setPlainToken] = useState("");
-  const [sudoOpen, setSudoOpen] = useState(false);
-  const [pendingRevoke, setPendingRevoke] = useState<number | null>(null);
-  const projectsQuery = useQuery({ queryKey: ["projects", "all"], queryFn: ({ signal }) => api<{ projects: Project[] }>("/projects?include_archived=1", { signal }) });
-  const tagsQuery = useQuery({ queryKey: ["tags"], queryFn: ({ signal }) => api<{ tags: Tag[] }>("/tags", { signal }) });
-  const tokensQuery = useQuery<{ tokens: APIToken[] }>({
-    queryKey: ["tokens"],
-    queryFn: () => api<{ tokens: APIToken[] }>("/tokens"),
-  });
-  const createMutation = useMutation({
-    mutationFn: () =>
-      api<{ token: string }>("/tokens", {
-        method: "POST",
-        body: JSON.stringify({ name, scopes, password, project_ids: projectIDs, tag_ids: tagIDs }),
-      }),
-    onSuccess: (result) => {
-      setPlainToken(result.token);
-      setName("");
-      setPassword("");
-      setProjectIDs([]);
-      setTagIDs([]);
-      void queryClient.invalidateQueries({ queryKey: ["tokens"] });
-      notify("令牌已生成，明文只显示这一次", "success");
-    },
-    onError: (error) => notify(errorMessage(error), "error"),
-  });
-  const revokeMutation = useMutation({
-    mutationFn: (id: number) => api<void>(`/tokens/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      setPendingRevoke(null);
-      void queryClient.invalidateQueries({ queryKey: ["tokens"] });
-      notify("令牌已撤销", "success");
-    },
-    onError: (error) => notify(errorMessage(error), "error"),
-  });
-
-  const toggleScope = (scope: string) => {
-    setScopes((current) =>
-      current.includes(scope)
-        ? current.filter((item) => item !== scope)
-        : [...current, scope],
-    );
-  };
-
-  return (
-    <div className="settings-grid">
-      <section className="settings-card settings-card-wide">
-        <div className="settings-card-heading">
-          <h2>API 令牌</h2>
-          <KeyRound size={18} aria-hidden />
-        </div>
-        <p className="settings-copy">
-          给快捷指令、脚本和 agent 的 Bearer 令牌。明文只显示一次。
-        </p>
-        <div className="token-create">
-          <div className="form-row">
-            <div className="field">
-              <label htmlFor="token-name">名称</label>
-              <Input
-                id="token-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="例如 iPhone 快捷指令"
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="token-password">当前密码</label>
-              <Input
-                id="token-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="首次验证需要"
-              />
-            </div>
-          </div>
-          <div className="scope-row" role="group" aria-label="令牌权限">
-            {[
-              ["capture", "capture · 记一笔"],
-              ["read", "read · 读取"],
-              ["write", "write · 修改"],
-            ].map(([value, label]) => (
-              <label className="check-chip" key={value}>
-                <input
-                  type="checkbox"
-                  checked={scopes.includes(value)}
-                  onChange={() => toggleScope(value)}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-          <p className="settings-copy">项目和标签均可不选，表示不限制。每组内匹配任意一项，两组都有选择时须同时满足。</p>
-          <QueryFeedback pending={projectsQuery.isPending || tagsQuery.isPending} error={projectsQuery.error ?? tagsQuery.error} retry={() => { void projectsQuery.refetch(); void tagsQuery.refetch(); }} />
-          <fieldset className="resource-scope">
-            <legend>项目范围（可选）</legend>
-            <div className="scope-row">
-              {projectsQuery.data?.projects.map((project) => (
-                <label className="check-chip" key={project.id}>
-                  <input
-                    type="checkbox"
-                    aria-label={`项目：${project.name}`}
-                    checked={projectIDs.includes(project.id)}
-                    disabled={Boolean(project.archived_at)}
-                    onChange={(event) => setProjectIDs((current) => event.target.checked
-                      ? [...current, project.id]
-                      : current.filter((id) => id !== project.id))}
-                  />
-                  {project.name}{project.archived_at ? "（已归档）" : ""}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset className="resource-scope">
-            <legend>标签范围（可选）</legend>
-            <div className="scope-row">
-              {tagsQuery.data?.tags.map((tag) => (
-                <label className="check-chip" key={tag.id}>
-                  <input
-                    type="checkbox"
-                    aria-label={`标签：${tag.name}`}
-                    checked={tagIDs.includes(tag.id)}
-                    onChange={(event) => setTagIDs((current) => event.target.checked
-                      ? [...current, tag.id]
-                      : current.filter((id) => id !== tag.id))}
-                  />
-                  #{tag.name}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <Button
-            type="button"
-            onClick={() => createMutation.mutate()}
-            disabled={!name.trim() || scopes.length === 0 || createMutation.isPending}
-          >
-            {createMutation.isPending ? "生成中…" : "生成令牌"}
-          </Button>
-        </div>
-        {plainToken ? <SecretNotice key={plainToken} secret={plainToken} onDismiss={() => setPlainToken("")} /> : null}
-        <QueryFeedback pending={tokensQuery.isPending} error={tokensQuery.error} retry={() => void tokensQuery.refetch()} />
-        <div className="token-list">
-          {tokensQuery.data?.tokens.length === 0 ? (
-            <p className="muted-copy">还没有 API 令牌。</p>
-          ) : null}
-          {tokensQuery.data?.tokens.map((token) => (
-            <div className="token-item" key={token.id}>
-              <div>
-                <strong>{token.name}</strong>
-                <small>
-                  {token.prefix}… · {token.scopes.join(" / ")}
-                  {token.last_used_at ? ` · 最近 ${formatDateTime(token.last_used_at)}` : ""}
-                </small>
-                <small className="resource-summary">项目：{token.project_ids?.length ? token.project_ids.map((id) => projectsQuery.data?.projects.find((item) => item.id === id)?.name ?? `#${id}`).join("、") : "不限"} · 标签：{token.tag_ids?.length ? token.tag_ids.map((id) => tagsQuery.data?.tags.find((item) => item.id === id)?.name ?? `#${id}`).join("、") : "不限"}</small>
-              </div>
-              <button
-                className="text-button text-button-danger"
-                type="button"
-                onClick={() => {
-                  setPendingRevoke(token.id);
-                  setSudoOpen(true);
-                }}
-              >
-                撤销
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-      <SudoDialog
-        open={sudoOpen}
-        title="撤销 API 令牌"
-        description="撤销后，使用这枚令牌的脚本会立即失效。"
-        onClose={() => {
-          setSudoOpen(false);
-          setPendingRevoke(null);
-        }}
-        onSuccess={() => {
-          if (pendingRevoke !== null) {
-            revokeMutation.mutate(pendingRevoke);
-          }
-        }}
-      />
     </div>
   );
 }

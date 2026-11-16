@@ -117,6 +117,7 @@ export interface APIToken {
   tag_ids: number[];
   created_at: string;
   last_used_at: string | null;
+  expires_at?: string | null;
 }
 
 export interface SessionInfo {
@@ -165,7 +166,7 @@ export async function api<T>(
   const response = await fetch(`/api/v1${path}`, {
     ...init,
     headers,
-    credentials: "same-origin",
+    credentials: headers.has("Authorization") ? "omit" : "same-origin",
   });
 
   if (!response.ok) {

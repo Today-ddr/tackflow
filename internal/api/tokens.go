@@ -20,6 +20,23 @@ type tokenResponse struct {
 	TagIDs     []int64  `json:"tag_ids"`
 	CreatedAt  string   `json:"created_at"`
 	LastUsedAt *string  `json:"last_used_at"`
+	ExpiresAt  *string  `json:"expires_at"`
+}
+
+func tokenFromStore(token store.APIToken) tokenResponse {
+	result := tokenResponse{
+		ID: token.ID, Name: token.Name, Prefix: token.Prefix, Scopes: token.Scopes,
+		ProjectIDs: token.ProjectIDs, TagIDs: token.TagIDs, CreatedAt: token.CreatedAt.UTC().Format(time.RFC3339),
+	}
+	if token.LastUsedAt != nil {
+		value := token.LastUsedAt.UTC().Format(time.RFC3339)
+		result.LastUsedAt = &value
+	}
+	if token.ExpiresAt != nil {
+		value := token.ExpiresAt.UTC().Format(time.RFC3339)
+		result.ExpiresAt = &value
+	}
+	return result
 }
 
 func (s *Server) handleListTokens(w http.ResponseWriter, r *http.Request) {
@@ -30,21 +47,7 @@ func (s *Server) handleListTokens(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]tokenResponse, 0, len(tokens))
 	for _, token := range tokens {
-		var lastUsedAt *string
-		if token.LastUsedAt != nil {
-			value := token.LastUsedAt.Format(time.RFC3339)
-			lastUsedAt = &value
-		}
-		result = append(result, tokenResponse{
-			ID:         token.ID,
-			Name:       token.Name,
-			Prefix:     token.Prefix,
-			Scopes:     token.Scopes,
-			ProjectIDs: token.ProjectIDs,
-			TagIDs:     token.TagIDs,
-			CreatedAt:  token.CreatedAt.Format(time.RFC3339),
-			LastUsedAt: lastUsedAt,
-		})
+		result = append(result, tokenFromStore(token))
 	}
 	s.writeJSON(w, http.StatusOK, map[string]any{"tokens": result})
 }
@@ -56,6 +59,7 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 		Password   string   `json:"password"`
 		ProjectIDs []int64  `json:"project_ids"`
 		TagIDs     []int64  `json:"tag_ids"`
+		ExpiresAt  *string  `json:"expires_at"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求格式不正确")
@@ -72,6 +76,17 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 	if !auth.ValidAPITokenScopes(request.Scopes) {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_scopes", "令牌权限不正确")
 		return
+	}
+	now := s.now().UTC()
+	var expiresAt *time.Time
+	if request.ExpiresAt != nil {
+		parsed, err := time.Parse(time.RFC3339, *request.ExpiresAt)
+		parsed = parsed.UTC().Truncate(time.Second)
+		if err != nil || !parsed.After(now) || parsed.After(now.Add(365*24*time.Hour)) {
+			s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_expiry", "有效期须为未来 365 天内的 RFC3339 时间")
+			return
+		}
+		expiresAt = &parsed
 	}
 	if len(request.ProjectIDs) > 100 || len(request.TagIDs) > 100 {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_resources", "项目或标签范围过大")
@@ -95,24 +110,16 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token, err := s.store.CreateAPIToken(
-		r.Context(), request.Name, prefix, hash, request.Scopes, s.now().UTC(),
-		store.TokenResources{ProjectIDs: request.ProjectIDs, TagIDs: request.TagIDs},
+		r.Context(), request.Name, prefix, hash, request.Scopes, now,
+		store.TokenOptions{ProjectIDs: request.ProjectIDs, TagIDs: request.TagIDs, ExpiresAt: expiresAt},
 	)
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法保存令牌")
 		return
 	}
 	s.writeJSON(w, http.StatusCreated, map[string]any{
-		"token": rawToken,
-		"api_token": tokenResponse{
-			ID:         token.ID,
-			Name:       token.Name,
-			Prefix:     token.Prefix,
-			Scopes:     token.Scopes,
-			ProjectIDs: token.ProjectIDs,
-			TagIDs:     token.TagIDs,
-			CreatedAt:  token.CreatedAt.Format(time.RFC3339),
-		},
+		"token":     rawToken,
+		"api_token": tokenFromStore(token),
 	})
 }
 

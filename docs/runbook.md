@@ -196,7 +196,7 @@ curl -fsS https://tack.example.com/api/v1/version
 
 - PWA：打开 `https://tack.example.com/capture`，添加到主屏幕；manifest 的 `start_url` 就是 capture。
 - iOS 快捷指令：创建「获取 URL 内容」请求，方法 `POST`，URL 为 `https://tack.example.com/api/v1/capture`，Authorization 为 `Bearer tk_...`，请求体 `{"text":"..."}`。
-- Token 在「设置 → API 令牌」创建，明文只显示一次。
+- Token 在「设置 → Agent 连接」创建，明文只显示一次；快捷指令选择「快速收集」。
 
 ## M5 功能配置
 
@@ -211,6 +211,14 @@ curl -fsS https://tack.example.com/api/v1/version
 升级前运行 `make check`，备份数据库，再按现有更新流程部署。新增迁移为 0003–0009，保留原任务、Session 和无资源限制的 Token。删除授权标签会撤销引用该标签的 Token；任务物理清理后编号不复用。幂等缓存由 Session secret 加密，恢复数据库时保留原密钥；`idempotency_uncertain` 表示应先查现状再决定重试，不能直接换 key 再发。当前工作分支尚未打新版本 tag；部署域名和 GitHub owner 沿用操作者的环境配置。
 
 验证 Passkey 时应在真实 HTTPS 域名或 localhost 使用系统认证器完成注册、退出、重新登录、删除；自动化签名测试不能替代系统 Face ID/指纹体验。桥接首次使用先执行 `--check`，再在专用测试项目中放一张 `todo + agent_ready` 卡，检查 Codeg 任务、心跳和回写；不要用生产任务作冒烟测试。
+
+## Agent 连接与 Key
+
+「设置 → Agent 连接」管理 API Key、接入说明和只读检查，旧 `/settings/tokens` 路径仍有效。新网页创建默认 30 天，可选 7/90/365 天或不过期；旧 Key 不设置默认有效期。迁移 0010 仅追加 `api_token.expires_at`，启动新版本前按常规流程备份。
+
+检查只向当前 Tack 发认证 GET；远程 Agent 需另在自身运行环境执行说明中的 curl，且不能把 localhost 当服务器公网地址。最近请求含检查请求，不是在线状态。更换 Key 先结束进行中的领取，创建/配置/验证新 Key，再撤销旧 Key；已有 claim 不能转移给新凭证。
+
+Tack 当前没有 MCP endpoint；REST API 和 Codeg bridge 的使用不依赖 MCP。完整步骤见 [Agent 连接](agent-connections.md)，协议取舍见 [ADR 0001](adr/0001-agent-connections.md)。
 
 ## 安全边界
 

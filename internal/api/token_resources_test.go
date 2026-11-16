@@ -317,7 +317,7 @@ func TestDeletedTagNeverTransfersTokenAccess(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				token, err := st.CreateAPIToken(t.Context(), "review", prefix, hash, []string{auth.ScopeRead, auth.ScopeWrite, auth.ScopeCapture}, now, store.TokenResources{TagIDs: ids})
+				token, err := st.CreateAPIToken(t.Context(), "review", prefix, hash, []string{auth.ScopeRead, auth.ScopeWrite, auth.ScopeCapture}, now, store.TokenOptions{TagIDs: ids})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -437,8 +437,11 @@ func TestResourceIdentityMigrationRevokesAtomicallyAndPreservesExistingData(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := st.CreateAPIToken(t.Context(), "existing", "prefix", "hash", []string{auth.ScopeRead}, now, store.TokenResources{TagIDs: []int64{tag.ID}})
-	if err != nil {
+	token := store.APIToken{Hash: "hash"}
+	if err := database.QueryRowContext(t.Context(), `
+		INSERT INTO api_token(name, prefix, hash, scopes, created_at, project_ids, tag_ids)
+		VALUES ('existing', 'prefix', 'hash', '["read"]', ?, '[]', ?) RETURNING id
+	`, now.Format(time.RFC3339), "["+itoa(tag.ID)+"]").Scan(&token.ID); err != nil {
 		t.Fatal(err)
 	}
 	var taskID int64
@@ -458,7 +461,7 @@ func TestResourceIdentityMigrationRevokesAtomicallyAndPreservesExistingData(t *t
 		t.Fatal(err)
 	}
 	stored, err := st.APITokenByID(t.Context(), token.ID)
-	if err != nil || stored.RevokedAt != nil || !slices.Equal(stored.TagIDs, []int64{tag.ID}) {
+	if err != nil || stored.RevokedAt != nil || stored.ExpiresAt != nil || !slices.Equal(stored.TagIDs, []int64{tag.ID}) {
 		t.Fatalf("migration changed existing token: %+v, %v", stored, err)
 	}
 	existing, err := st.TaskByID(t.Context(), taskID)

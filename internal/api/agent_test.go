@@ -182,7 +182,7 @@ func TestTaskAAgentAPIResourceRestrictions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fixture.store.CreateAPIToken(t.Context(), "restricted", prefix, hash, []string{auth.ScopeWrite}, fixture.now, store.TokenResources{ProjectIDs: []int64{project.ID}, TagIDs: []int64{tag.ID}}); err != nil {
+	if _, err := fixture.store.CreateAPIToken(t.Context(), "restricted", prefix, hash, []string{auth.ScopeWrite}, fixture.now, store.TokenOptions{ProjectIDs: []int64{project.ID}, TagIDs: []int64{tag.ID}}); err != nil {
 		t.Fatal(err)
 	}
 	response := fixture.request(t, http.MethodGet, "/api/v1/agent/next", "", token, nil)
@@ -265,7 +265,7 @@ func TestTaskAScopedRebalancePreservesUnrelatedAgentClaim(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := fixture.store.CreateAPIToken(t.Context(), "restricted", prefix, hash, []string{auth.ScopeWrite}, fixture.now, store.TokenResources{ProjectIDs: []int64{project.ID}}); err != nil {
+				if _, err := fixture.store.CreateAPIToken(t.Context(), "restricted", prefix, hash, []string{auth.ScopeWrite}, fixture.now, store.TokenOptions{ProjectIDs: []int64{project.ID}}); err != nil {
 					t.Fatal(err)
 				}
 				token = plain
@@ -457,7 +457,7 @@ func TestTaskAAgentClaimAPIReplayRechecksLeaseAndAccess(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := fixture.store.CreateAPIToken(t.Context(), "scoped", prefix, hash, []string{auth.ScopeWrite}, fixture.now, store.TokenResources{ProjectIDs: []int64{project.ID}, TagIDs: []int64{tag.ID}}); err != nil {
+			if _, err := fixture.store.CreateAPIToken(t.Context(), "scoped", prefix, hash, []string{auth.ScopeWrite}, fixture.now, store.TokenOptions{ProjectIDs: []int64{project.ID}, TagIDs: []int64{tag.ID}}); err != nil {
 				t.Fatal(err)
 			}
 			headers := map[string]string{"Idempotency-Key": "stale-claim"}

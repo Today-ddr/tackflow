@@ -64,10 +64,13 @@ curl -fsS \
 
 完整路由、scope、幂等和错误码见 [API 契约](docs/api.md)。
 
+在「设置 → Agent 连接」为每个 Agent 创建独立 API Key，选择权限、项目/标签范围与有效期，并复制不含密钥的接入说明。当前使用 REST API，尚未提供 MCP 服务；详见 [Agent 连接指南](docs/agent-connections.md)。
+
 ## 文档
 
 - [设计文档](Design.md)
 - [API 契约](docs/api.md)
+- [Agent 连接指南](docs/agent-connections.md)
 - [运维手册](docs/runbook.md)
 - [更新日志](CHANGELOG.md)
 - [AI 协作入口](AGENTS.md)

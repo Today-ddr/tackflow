@@ -20,11 +20,13 @@ type APIToken struct {
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	RevokedAt  *time.Time
+	ExpiresAt  *time.Time
 }
 
-type TokenResources struct {
+type TokenOptions struct {
 	ProjectIDs []int64
 	TagIDs     []int64
+	ExpiresAt  *time.Time
 }
 
 func (s *Store) CreateAPIToken(
@@ -32,15 +34,15 @@ func (s *Store) CreateAPIToken(
 	name, prefix, hash string,
 	scopes []string,
 	now time.Time,
-	resources ...TokenResources,
+	options ...TokenOptions,
 ) (APIToken, error) {
 	scopesJSON, err := json.Marshal(scopes)
 	if err != nil {
 		return APIToken{}, err
 	}
-	allowed := TokenResources{ProjectIDs: []int64{}, TagIDs: []int64{}}
-	if len(resources) > 0 {
-		allowed = resources[0]
+	allowed := TokenOptions{ProjectIDs: []int64{}, TagIDs: []int64{}}
+	if len(options) > 0 {
+		allowed = options[0]
 	}
 	projectJSON, err := json.Marshal(allowed.ProjectIDs)
 	if err != nil {
@@ -50,11 +52,16 @@ func (s *Store) CreateAPIToken(
 	if err != nil {
 		return APIToken{}, err
 	}
+	var expiresAt *string
+	if allowed.ExpiresAt != nil {
+		value := allowed.ExpiresAt.UTC().Format(time.RFC3339)
+		expiresAt = &value
+	}
 	result, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO api_token(name, prefix, hash, scopes, created_at, project_ids, tag_ids)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		name, prefix, hash, string(scopesJSON), now.UTC().Format(time.RFC3339), string(projectJSON), string(tagJSON),
+		`INSERT INTO api_token(name, prefix, hash, scopes, created_at, project_ids, tag_ids, expires_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		name, prefix, hash, string(scopesJSON), now.UTC().Format(time.RFC3339), string(projectJSON), string(tagJSON), expiresAt,
 	)
 	if err != nil {
 		return APIToken{}, fmt.Errorf("insert api token: %w", err)
@@ -68,7 +75,7 @@ func (s *Store) CreateAPIToken(
 
 func (s *Store) APITokenByID(ctx context.Context, id int64) (APIToken, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids
+		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids, expires_at
 		FROM api_token WHERE id = ?
 	`, id)
 	token, err := scanAPIToken(row)
@@ -83,7 +90,7 @@ func (s *Store) APITokenByID(ctx context.Context, id int64) (APIToken, error) {
 
 func (s *Store) APITokenByHash(ctx context.Context, hash string) (APIToken, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids
+		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids, expires_at
 		FROM api_token WHERE hash = ? AND revoked_at IS NULL
 	`, hash)
 	token, err := scanAPIToken(row)
@@ -98,7 +105,7 @@ func (s *Store) APITokenByHash(ctx context.Context, hash string) (APIToken, erro
 
 func (s *Store) ListAPITokens(ctx context.Context) ([]APIToken, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids
+		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids, expires_at
 		FROM api_token
 		WHERE revoked_at IS NULL
 		ORDER BY created_at DESC, id DESC
@@ -160,7 +167,7 @@ func scanAPIToken(scanner apiTokenScanner) (APIToken, error) {
 	var token APIToken
 	var scopesJSON, createdAt string
 	var projectsJSON, tagsJSON string
-	var lastUsedAt, revokedAt sql.NullString
+	var lastUsedAt, revokedAt, expiresAt sql.NullString
 	if err := scanner.Scan(
 		&token.ID,
 		&token.Name,
@@ -172,6 +179,7 @@ func scanAPIToken(scanner apiTokenScanner) (APIToken, error) {
 		&revokedAt,
 		&projectsJSON,
 		&tagsJSON,
+		&expiresAt,
 	); err != nil {
 		return APIToken{}, err
 	}
@@ -208,6 +216,13 @@ func scanAPIToken(scanner apiTokenScanner) (APIToken, error) {
 			return APIToken{}, fmt.Errorf("parse api token revoked_at: %w", err)
 		}
 		token.RevokedAt = &parsed
+	}
+	if expiresAt.Valid {
+		parsed, err := time.Parse(time.RFC3339, expiresAt.String)
+		if err != nil {
+			return APIToken{}, fmt.Errorf("parse api token expires_at: %w", err)
+		}
+		token.ExpiresAt = &parsed
 	}
 	return token, nil
 }

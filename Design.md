@@ -427,6 +427,7 @@ Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码
 | `/settings` | 常规：主题、语言、更新频率 |
 | `/settings/account` | 密码、会话、Passkey |
 | `/settings/tokens` | API token 管理 |
+| `/settings/connections` | Agent 连接、API Key 管理与接入说明；旧 tokens 路由兼容 |
 | `/settings/update` | 版本、更新日志、检查/更新/回滚 |
 
 ### 13.2 看板交互
@@ -892,6 +893,12 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 M5 包含 Passkey、独立 Codeg bridge、持久化 Webhook 与 Session SSE；同时补齐回收站、项目/标签管理、全部游标页加载、搜索前缀和 Token 资源范围。详细接口见 `docs/api.md`，桥接配置见 `docs/codeg-bridge.md`。真实设备 Passkey、实际 Codeg 执行和公网接收端需在对应部署环境验收。
 
 Token 的项目和标签数组为空表示该维度不限制，维度内 OR、维度间 AND；旧 Token 不变。受限 Token 不能写全局分类或自动创建标签，列表/导出计数不泄露范围外任务。
+
+Agent 连接（2026-11-17）：继续以 REST v1 为权威接口，将 Token 管理收敛到「Agent 连接」。每个 Agent 建独立 API Key，提供只读、收集、任务执行和自定义用途预设；网页默认有效期 30 天，可选 7/90/365 天或不过期。新增可选 `expires_at`（未来 365 天内的 RFC3339，统一 UTC 秒精度），迁移 0010 保留旧 Key 不过期。每次认证和取得写锁后都复核到期；过期未撤销项仍展示在管理列表。
+
+`GET /api/v1/agent/connection` 是任何有效 Token 都可调用的只读认证检查，网页 Session 也能读取接入地址，但响应明确区分身份。返回受信的 `TACK_PUBLIC_URL` API 地址及当前 Token 自身非敏感元数据，不返回任务、秘密或其他凭证。网页检查固定同源、仅 Bearer、不带 Cookie、不跟随重定向。复制的 Agent 说明按权限/资源生成，不嵌入明文 Key；说明与凭证分开交付。最近请求仅表示凭证使用记录，不推断 Agent 在线。
+
+当前不提供 MCP endpoint，也不将 REST 地址伪装成 MCP。需要聊天客户端自动发现工具时再添加复用 API 的适配器；远程授权方案届时按客户端和 MCP 规范设计。取舍及官方依据见 `docs/adr/0001-agent-connections.md`，使用步骤见 `docs/agent-connections.md`。
 
 Agent 只原子领取 `todo + agent_ready`，使用绑定主体的 30 分钟租约；GET 只预览，POST 领取。心跳续租，结果默认 `review`；过期或人工改动后旧 worker 不能回写。
 
