@@ -1,7 +1,7 @@
 # Tack 设计文档
 
 > 项目名：**Tack**（图钉）· 中文叫「图钉」
-> 状态：待评审 · v0.1 · 2026-11-15
+> 状态：M1–M4 已实现 · v0.2.0 · 2026-11-16
 > 仓库：`github.com/<owner>/tack`（owner 待定）
 > 一句话：把念头钉在板上，让脚本和 agent 也能看见。
 
@@ -534,9 +534,9 @@ app 侧只暴露给已登录且处于 sudo 状态的用户，不把 updater toke
   → 输入密码（sudo）
   → app POST updater /apply {version}
   → updater 校验 tag、备份数据库
+  → 改写 TACK_IMAGE_TAG 为 new
   → docker compose pull app
-  → 记录当前 tag 到 state.json
-  → TACK_IMAGE_TAG=<new> docker compose up -d --wait --wait-timeout 90 app
+  → docker compose up -d --wait --wait-timeout 90 app
   → 健康检查通过：state.json 写 success
   → 失败：用旧 tag 重新 up -d --wait；写 rolled_back
 ```
@@ -674,8 +674,10 @@ services:
 | `TACK_DATA_DIR` | 否 | 默认 `/data` |
 | `TACK_IMAGE_TAG` | 是 | 当前运行版本，updater 会改写 |
 | `TACK_UPDATER_TAG` | 是 | updater 自己的版本，手动升级 |
+| `TACK_UPDATER_URL` | 是 | app 访问 updater 的地址，Compose 默认 `http://updater:8081` |
 | `TACK_UPDATER_TOKEN` | 是 | app ↔ updater 共享密钥 |
 | `TACK_COMPOSE_FILE` | 是 | updater 用，默认 `/compose/docker-compose.yml` |
+| `TACK_ENV_FILE` | 是 | updater 用，默认 `/compose/.env` |
 | `TACK_SERVICE` | 是 | updater 用，默认 `app` |
 | `TACK_GITHUB_REPO` | 是 | `owner/tack` |
 | `TACK_GITHUB_TOKEN` | 否 | 私有仓库读 release 用 |
@@ -881,6 +883,8 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 | M4 打磨 | 搜索、⌘K、暗色、PWA、导出、备份 | 日常自用一周无阻断 |
 | M5 扩展 | Passkey、Codeg bridge、webhook、SSE | 按需 |
 
+当前实现状态（2026-11-16）：M0–M4 已落地并通过本地质量门、Docker 构建、浏览器登录/看板/capture 和 API 探针。更新链路已具备 app 检查、侧栏红点、可调频率、updater、备份和失败回滚；M5 扩展不包含在 `v0.2.0`。
+
 ## 21. 风险
 
 | 风险 | 影响 | 对策 |
@@ -911,3 +915,4 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 - 域名（部署前定）。
 - GitHub owner（仓库名已定 `tack`；若远端被占用，备选 `cork`、`docket`）。
 - Codeg bridge 的落点与实现放到 v1.1 再定。
+- Passkey、Codeg bridge、webhook、SSE 放到 M5；v0.2.0 不做。
