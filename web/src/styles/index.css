@@ -1807,6 +1807,23 @@ dialog::backdrop {
   grid-column: 1 / -1;
 }
 
+.management-list { display: grid; gap: 0.6rem; margin: 0.7rem 0; }
+.management-item { display: flex; align-items: center; flex-wrap: wrap; gap: 0.7rem; border-top: 1px solid var(--line); padding: 0.7rem 0; }
+.management-main { display: grid; flex: 1; min-width: min(12rem, 100%); gap: 0.3rem; overflow-wrap: anywhere; }
+.management-main strong { font-size: 0.85rem; font-weight: 500; }
+.management-main small { color: var(--muted); font-size: 0.8rem; }
+.resource-scope { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.65rem; }
+.resource-scope legend { color: var(--muted); font-size: 0.8rem; }
+.resource-scope .check-chip { max-width: 100%; overflow-wrap: anywhere; }
+.token-item .resource-summary { white-space: normal; overflow-wrap: anywhere; }
+.secret-notice .plain-token { flex-wrap: wrap; }
+.secret-notice code { flex-basis: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.query-feedback { margin: 0.6rem 0; color: var(--danger); overflow-wrap: anywhere; }
+.passkey-login { margin-top: 1rem; }
+.webhook-item { display: grid; gap: 0.7rem; border-top: 1px solid var(--line); padding: 0.7rem 0; }
+.task-links { display: grid; gap: 0.5rem; overflow-wrap: anywhere; }
+.task-links a { color: var(--accent); }
+
 .settings-card-heading {
   display: flex;
   align-items: flex-start;

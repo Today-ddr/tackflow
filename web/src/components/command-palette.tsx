@@ -3,6 +3,7 @@ import { CornerDownLeft, Plus, Search, Settings } from "lucide-react";
 
 import type { Task } from "../lib/api";
 import { formatDate, priorityLabel } from "../lib/format";
+import { filterTasks } from "../lib/filter";
 import { ProjectDot } from "./project-dot";
 
 interface CommandPaletteProps {
@@ -32,15 +33,7 @@ export function CommandPalette({
         .sort((left, right) => right.updated_at.localeCompare(left.updated_at))
         .slice(0, 8);
     }
-    return tasks
-      .filter(
-        (task) =>
-          task.title.toLowerCase().includes(needle) ||
-          task.notes.toLowerCase().includes(needle) ||
-          task.tags.some((tag) => tag.name.toLowerCase().includes(needle)) ||
-          task.project?.name.toLowerCase().includes(needle),
-      )
-      .slice(0, 12);
+    return filterTasks(tasks, { kind: "all" }, needle).slice(0, 12);
   }, [needle, tasks]);
 
   useEffect(() => {
@@ -92,7 +85,7 @@ export function CommandPalette({
             ref={inputRef}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜索任务、标签或项目…"
+            placeholder="搜索，或用 status: / tag: / project:"
             aria-label="搜索任务"
           />
           <kbd>ESC</kbd>

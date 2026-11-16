@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { createQueryClient } from "./query";
 import { ToastProvider } from "../components/toast";
+import { json, me, renderWithClient } from "../test/fixtures";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -29,6 +30,26 @@ afterEach(() => {
 });
 
 describe("Tack login", () => {
+  it("revokes the session and closes its event stream on logout", async () => {
+    let streamClosed = false;
+    let logoutRequested = false;
+    vi.stubGlobal("EventSource", class extends EventTarget { close() { streamClosed = true; } });
+    vi.stubGlobal("scrollTo", vi.fn());
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/auth/me")) return json(me);
+      if (String(input).endsWith("/auth/logout") && init?.method === "POST") { logoutRequested = true; return json(null, 204); }
+      return json({ tasks: [], projects: [], tags: [], next_cursor: null });
+    }));
+    const client = createQueryClient();
+    client.setQueryData(["tokens"], { tokens: [] });
+    renderWithClient(<App />, client);
+    await userEvent.click(await screen.findByRole("button", { name: "退出" }));
+    expect(await screen.findByRole("button", { name: "进入看板" })).toBeInTheDocument();
+    expect(logoutRequested).toBe(true);
+    expect(streamClosed).toBe(true);
+    expect(client.getQueryData(["tokens"])).toBeUndefined();
+  });
+
   it("shows credentials before a session exists", async () => {
     vi.stubGlobal(
       "fetch",

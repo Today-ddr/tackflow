@@ -18,6 +18,8 @@ import {
   errorMessage,
   type APIToken,
   type Me,
+  type Project,
+  type Tag,
   type SessionInfo,
   type Settings,
   type UpdateStatus,
@@ -28,6 +30,12 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { SudoDialog } from "./sudo-dialog";
 import { useToast } from "./toast";
+import { OrganizeSettings } from "./organize-settings";
+import { TrashSettings } from "./trash-settings";
+import { QueryFeedback } from "./query-feedback";
+import { SecretNotice } from "./secret-notice";
+import { PasskeySettings } from "./passkey-settings";
+import { IntegrationsSettings } from "./integrations-settings";
 
 interface SettingsPageProps {
   path: string;
@@ -36,12 +44,15 @@ interface SettingsPageProps {
   onLogout: () => void;
 }
 
-type SettingsTab = "general" | "account" | "tokens" | "update" | "data";
+type SettingsTab = "general" | "account" | "tokens" | "update" | "data" | "organize" | "trash" | "integrations";
 
 const tabs: Array<{ id: SettingsTab; label: string; path: string }> = [
   { id: "general", label: "常规", path: "/settings" },
   { id: "account", label: "账户", path: "/settings/account" },
   { id: "tokens", label: "API 令牌", path: "/settings/tokens" },
+  { id: "organize", label: "项目与标签", path: "/settings/organize" },
+  { id: "trash", label: "回收站", path: "/settings/trash" },
+  { id: "integrations", label: "集成", path: "/settings/integrations" },
   { id: "update", label: "更新", path: "/settings/update" },
   { id: "data", label: "数据", path: "/settings/data" },
 ];
@@ -109,6 +120,9 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
           <AccountSettings me={me} onLogout={onLogout} notify={notify} />
         ) : null}
         {tab === "tokens" ? <TokenSettings notify={notify} /> : null}
+        {tab === "organize" ? <OrganizeSettings /> : null}
+        {tab === "trash" ? <TrashSettings /> : null}
+        {tab === "integrations" ? <IntegrationsSettings /> : null}
         {tab === "update" ? (
           <UpdateSettings
             update={updateQuery.data}
@@ -344,6 +358,7 @@ function AccountSettings({
         </div>
       </section>
       <p className="settings-meta">当前账户：{me.user.username}</p>
+      <PasskeySettings />
     </div>
   );
 }
@@ -356,10 +371,14 @@ function TokenSettings({
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<string[]>(["capture", "read"]);
+  const [projectIDs, setProjectIDs] = useState<number[]>([]);
+  const [tagIDs, setTagIDs] = useState<number[]>([]);
   const [password, setPassword] = useState("");
   const [plainToken, setPlainToken] = useState("");
   const [sudoOpen, setSudoOpen] = useState(false);
   const [pendingRevoke, setPendingRevoke] = useState<number | null>(null);
+  const projectsQuery = useQuery({ queryKey: ["projects", "all"], queryFn: ({ signal }) => api<{ projects: Project[] }>("/projects?include_archived=1", { signal }) });
+  const tagsQuery = useQuery({ queryKey: ["tags"], queryFn: ({ signal }) => api<{ tags: Tag[] }>("/tags", { signal }) });
   const tokensQuery = useQuery<{ tokens: APIToken[] }>({
     queryKey: ["tokens"],
     queryFn: () => api<{ tokens: APIToken[] }>("/tokens"),
@@ -368,12 +387,14 @@ function TokenSettings({
     mutationFn: () =>
       api<{ token: string }>("/tokens", {
         method: "POST",
-        body: JSON.stringify({ name, scopes, password }),
+        body: JSON.stringify({ name, scopes, password, project_ids: projectIDs, tag_ids: tagIDs }),
       }),
     onSuccess: (result) => {
       setPlainToken(result.token);
       setName("");
       setPassword("");
+      setProjectIDs([]);
+      setTagIDs([]);
       void queryClient.invalidateQueries({ queryKey: ["tokens"] });
       notify("令牌已生成，明文只显示这一次", "success");
     },
@@ -446,6 +467,45 @@ function TokenSettings({
               </label>
             ))}
           </div>
+          <p className="settings-copy">项目和标签均可不选，表示不限制。每组内匹配任意一项，两组都有选择时须同时满足。</p>
+          <QueryFeedback pending={projectsQuery.isPending || tagsQuery.isPending} error={projectsQuery.error ?? tagsQuery.error} retry={() => { void projectsQuery.refetch(); void tagsQuery.refetch(); }} />
+          <fieldset className="resource-scope">
+            <legend>项目范围（可选）</legend>
+            <div className="scope-row">
+              {projectsQuery.data?.projects.map((project) => (
+                <label className="check-chip" key={project.id}>
+                  <input
+                    type="checkbox"
+                    aria-label={`项目：${project.name}`}
+                    checked={projectIDs.includes(project.id)}
+                    disabled={Boolean(project.archived_at)}
+                    onChange={(event) => setProjectIDs((current) => event.target.checked
+                      ? [...current, project.id]
+                      : current.filter((id) => id !== project.id))}
+                  />
+                  {project.name}{project.archived_at ? "（已归档）" : ""}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset className="resource-scope">
+            <legend>标签范围（可选）</legend>
+            <div className="scope-row">
+              {tagsQuery.data?.tags.map((tag) => (
+                <label className="check-chip" key={tag.id}>
+                  <input
+                    type="checkbox"
+                    aria-label={`标签：${tag.name}`}
+                    checked={tagIDs.includes(tag.id)}
+                    onChange={(event) => setTagIDs((current) => event.target.checked
+                      ? [...current, tag.id]
+                      : current.filter((id) => id !== tag.id))}
+                  />
+                  #{tag.name}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <Button
             type="button"
             onClick={() => createMutation.mutate()}
@@ -454,21 +514,8 @@ function TokenSettings({
             {createMutation.isPending ? "生成中…" : "生成令牌"}
           </Button>
         </div>
-        {plainToken ? (
-          <div className="plain-token" role="status">
-            <span>只显示这一次：</span>
-            <code>{plainToken}</code>
-            <button
-              type="button"
-              onClick={() => {
-                void navigator.clipboard?.writeText(plainToken);
-                notify("令牌已复制", "success");
-              }}
-            >
-              复制
-            </button>
-          </div>
-        ) : null}
+        {plainToken ? <SecretNotice key={plainToken} secret={plainToken} onDismiss={() => setPlainToken("")} /> : null}
+        <QueryFeedback pending={tokensQuery.isPending} error={tokensQuery.error} retry={() => void tokensQuery.refetch()} />
         <div className="token-list">
           {tokensQuery.data?.tokens.length === 0 ? (
             <p className="muted-copy">还没有 API 令牌。</p>
@@ -481,6 +528,7 @@ function TokenSettings({
                   {token.prefix}… · {token.scopes.join(" / ")}
                   {token.last_used_at ? ` · 最近 ${formatDateTime(token.last_used_at)}` : ""}
                 </small>
+                <small className="resource-summary">项目：{token.project_ids?.length ? token.project_ids.map((id) => projectsQuery.data?.projects.find((item) => item.id === id)?.name ?? `#${id}`).join("、") : "不限"} · 标签：{token.tag_ids?.length ? token.tag_ids.map((id) => tagsQuery.data?.tags.find((item) => item.id === id)?.name ?? `#${id}`).join("、") : "不限"}</small>
               </div>
               <button
                 className="text-button text-button-danger"

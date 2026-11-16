@@ -5,6 +5,8 @@ import { ArrowRight } from "lucide-react";
 import { api, ApiError, type LoginResponse } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { loginWithPasskey, supportsPasskeys } from "../lib/passkeys";
+import { usePasskey } from "../lib/use-passkey";
 
 interface LoginFormProps {
   onSuccess: (result: LoginResponse) => void;
@@ -13,6 +15,7 @@ interface LoginFormProps {
 export function LoginForm({ onSuccess }: LoginFormProps) {
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const passkey = usePasskey(loginWithPasskey, onSuccess);
   const mutation = useMutation({
     mutationFn: (credentials: { username: string; password: string }) =>
       api<LoginResponse>("/auth/login", {
@@ -44,7 +47,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           className="login-form"
           onSubmit={(event) => {
             event.preventDefault();
-            mutation.mutate({ username, password });
+            if (!passkey.pending && !mutation.isPending) mutation.mutate({ username, password });
           }}
         >
           <div className="field">
@@ -74,11 +77,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               {errorMessage}
             </p>
           ) : null}
-          <Button type="submit" disabled={mutation.isPending}>
+          <Button type="submit" disabled={mutation.isPending || passkey.pending}>
             {mutation.isPending ? "正在进入…" : "进入看板"}
             {!mutation.isPending ? <ArrowRight size={16} aria-hidden /> : null}
           </Button>
         </form>
+
+        <div className="passkey-login">
+          {supportsPasskeys() ? <div className="settings-button-row"><Button variant="quiet" type="button" disabled={passkey.pending || mutation.isPending} onClick={() => void passkey.run()}>{passkey.pending ? "等待设备确认…" : "使用 Passkey 登录"}</Button>{passkey.pending ? <button className="text-button" type="button" onClick={passkey.cancel}>取消</button> : null}</div> : <p className="settings-copy">当前浏览器或连接不支持 Passkey，仍可使用密码登录。</p>}
+          {passkey.error ? <p className="form-error" role="alert">{passkey.error}</p> : null}
+        </div>
 
         <p className="login-note">单用户 · 数据留在自己的服务器</p>
       </section>

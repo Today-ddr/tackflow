@@ -77,6 +77,11 @@ export interface TasksResponse {
   next_cursor: string | null;
 }
 
+export interface TrashResponse {
+  tasks: Array<Task & { deleted_at: string }>;
+  next_cursor: string | null;
+}
+
 export interface UpdateStatus {
   current_version: string;
   latest_version: string | null;
@@ -108,6 +113,8 @@ export interface APIToken {
   name: string;
   prefix: string;
   scopes: string[];
+  project_ids: number[];
+  tag_ids: number[];
   created_at: string;
   last_used_at: string | null;
 }

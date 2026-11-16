@@ -8,6 +8,7 @@ import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { ProjectDot } from "./project-dot";
+import { invalidateTaskData } from "../app/task-cache";
 
 export const projectColors: Array<{ value: ProjectColor; label: string }> = [
   { value: "sage", label: "鼠尾草" },
@@ -38,8 +39,7 @@ export function ProjectDialog({ open, onClose, onCreated }: ProjectDialogProps) 
     onSuccess: (project) => {
       setName("");
       setColor("sage");
-      void queryClient.invalidateQueries({ queryKey: ["projects"] });
-      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void invalidateTaskData(queryClient);
       notify(`项目「${project.name}」已创建`, "success");
       onCreated?.(project);
       onClose();

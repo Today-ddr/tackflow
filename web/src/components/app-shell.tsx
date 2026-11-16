@@ -19,6 +19,8 @@ import {
   type UpdateStatus,
 } from "../lib/api";
 import type { BoardFilter } from "../lib/format";
+import { fetchAllTasks } from "../lib/tasks";
+import { useTaskEvents } from "../app/task-events";
 import { Board } from "./board";
 import { CapturePage } from "./capture-page";
 import { CommandPalette } from "./command-palette";
@@ -35,6 +37,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
+  useTaskEvents(me.auth_kind === "session");
   const [filter, setFilter] = useState<BoardFilter>({ kind: "all" });
   const [query, setQuery] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -43,15 +46,15 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
 
   const tasksQuery = useQuery<TasksResponse>({
     queryKey: ["tasks"],
-    queryFn: () => api<TasksResponse>("/tasks?limit=500"),
+    queryFn: ({ signal }) => fetchAllTasks(signal),
   });
   const projectsQuery = useQuery<{ projects: Project[] }>({
     queryKey: ["projects"],
-    queryFn: () => api<{ projects: Project[] }>("/projects"),
+    queryFn: ({ signal }) => api<{ projects: Project[] }>("/projects", { signal }),
   });
   const tagsQuery = useQuery<{ tags: Tag[] }>({
     queryKey: ["tags"],
-    queryFn: () => api<{ tags: Tag[] }>("/tags"),
+    queryFn: ({ signal }) => api<{ tags: Tag[] }>("/tags", { signal }),
   });
   const updateQuery = useQuery<UpdateStatus>({
     queryKey: ["update-status"],

@@ -1,12 +1,15 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createQueryClient } from "../app/query";
 import type { Task, TaskDetailResponse } from "../lib/api";
 import { TaskSheet } from "./task-sheet";
 import { ToastProvider } from "./toast";
+import { renderWithClient } from "../test/fixtures";
+
+afterEach(() => vi.unstubAllGlobals());
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -44,6 +47,36 @@ beforeAll(() => {
 });
 
 describe("TaskSheet", () => {
+  it("invalidates task counts and trash when deleting a card", async () => {
+    const client = createQueryClient();
+    client.setQueryData(["tags"], { tags: [] });
+    client.setQueryData(["trash"], { pages: [], pageParams: [] });
+    client.setQueryData(["tasks"], { tasks: [task("todo")], next_cursor: null });
+    client.setQueryData(["projects"], { projects: [] });
+    vi.stubGlobal("confirm", () => true);
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => init?.method === "DELETE" ? new Response(null, { status: 204 }) : jsonResponse({ task: task("todo"), events: [], links: [] }, 200)));
+    const close = vi.fn();
+    renderWithClient(<TaskSheet taskID={5} projects={[]} onClose={close} />, client);
+    await screen.findByLabelText("标题");
+    await userEvent.click(screen.getByRole("button", { name: "删除" }));
+    await waitFor(() => expect(close).toHaveBeenCalled());
+    for (const key of ["tasks", "projects", "tags", "trash"]) expect(client.getQueryState([key])?.isInvalidated).toBe(true);
+  });
+
+  it("refreshes the board after comments while retaining the complete task cache", async () => {
+    const client = createQueryClient();
+    const cached = { tasks: [task("todo"), { ...task("todo"), id: 501 }], next_cursor: null };
+    client.setQueryData(["tasks"], cached);
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ task: task("todo"), events: [], links: [] }, 200)));
+    renderWithClient(<TaskSheet taskID={5} projects={[]} onClose={vi.fn()} />, client);
+    const user = userEvent.setup();
+    await user.type(await screen.findByRole("textbox", { name: "评论" }), "已核对");
+    await user.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "评论" })).toHaveValue(""));
+    expect(client.getQueryState(["tasks"])?.isInvalidated).toBe(true);
+    expect(client.getQueryData(["tasks"])).toEqual(cached);
+  });
+
   it("keeps unsaved edits when the status is changed", async () => {
     let currentStatus: Task["status"] = "inbox";
     let detailRequests = 0;

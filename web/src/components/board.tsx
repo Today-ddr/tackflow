@@ -34,6 +34,7 @@ import {
 } from "../lib/format";
 import { TaskCard, TaskCardBody } from "./task-card";
 import { useToast } from "./toast";
+import { invalidateTaskData } from "../app/task-cache";
 
 const statusOrder: TaskStatus[] = ["inbox", "todo", "doing", "review", "done"];
 
@@ -130,8 +131,8 @@ export function Board({
           tasks: current.tasks.map((item) => (item.id === task.id ? task : item)),
         };
       });
-      void queryClient.invalidateQueries({ queryKey: ["task", task.id] });
     },
+    onSettled: () => invalidateTaskData(queryClient),
   });
 
   const onDragStart = (event: DragStartEvent) => {
@@ -329,9 +330,7 @@ function InlineComposer({ status }: { status: TaskStatus }) {
     onSuccess: () => {
       setTitle("");
       setOpen(false);
-      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      void queryClient.invalidateQueries({ queryKey: ["projects"] });
-      void queryClient.invalidateQueries({ queryKey: ["tags"] });
+      void invalidateTaskData(queryClient);
     },
     onError: (error) => notify(errorMessage(error), "error"),
   });

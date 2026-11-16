@@ -23,6 +23,8 @@ import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { useToast } from "./toast";
+import { safeExternalURL } from "../lib/integrations";
+import { invalidateTaskData } from "../app/task-cache";
 
 const statuses: TaskStatus[] = ["inbox", "todo", "doing", "review", "done"];
 const priorities: TaskPriority[] = [0, 1, 2, 3];
@@ -38,7 +40,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
   const { notify } = useToast();
   const detailQuery = useQuery<TaskDetailResponse>({
     queryKey: ["task", taskID],
-    queryFn: () => api<TaskDetailResponse>(`/tasks/${taskID}`),
+    queryFn: ({ signal }) => api<TaskDetailResponse>(`/tasks/${taskID}`, { signal }),
     enabled: Number.isFinite(taskID),
   });
   const task = detailQuery.data?.task;
@@ -86,8 +88,6 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
       }),
     onSuccess: (updated) => {
       updateTaskCache(queryClient, updated);
-      void queryClient.invalidateQueries({ queryKey: ["task", taskID] });
-      void queryClient.invalidateQueries({ queryKey: ["tags"] });
       notify("已保存", "success");
     },
     onError: (error) => notify(errorMessage(error), "error"),
@@ -101,7 +101,6 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
       }),
     onSuccess: (updated) => {
       updateTaskCache(queryClient, updated);
-      void queryClient.invalidateQueries({ queryKey: ["task", taskID] });
     },
     onError: (error) => notify(errorMessage(error), "error"),
   });
@@ -110,8 +109,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
     mutationFn: () => api<void>(`/tasks/${taskID}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ["task", taskID] });
-      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      void queryClient.invalidateQueries({ queryKey: ["projects"] });
+      void invalidateTaskData(queryClient);
       notify("任务已移入回收站", "success");
       onClose();
     },
@@ -126,7 +124,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
       }),
     onSuccess: () => {
       setComment("");
-      void queryClient.invalidateQueries({ queryKey: ["task", taskID] });
+      void invalidateTaskData(queryClient);
       notify("评论已添加", "success");
     },
     onError: (error) => notify(errorMessage(error), "error"),
@@ -286,6 +284,11 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
           </div>
 
           <aside className="sheet-side">
+            {detailQuery.data?.links.length ? <section className="timeline-card"><div className="timeline-heading">关联链接</div><div className="task-links">{detailQuery.data.links.map((link) => {
+              const url = safeExternalURL(link.url);
+              const label = link.kind === "codeg_work_task" ? "Codeg 任务" : link.kind === "github_issue" ? "GitHub Issue" : link.kind;
+              return url ? <a key={link.id} href={url} target="_blank" rel="noopener noreferrer">{label} · {link.external_id}</a> : <span className="muted-copy" key={link.id}>{label} · {link.external_id}</span>;
+            })}</div></section> : null}
             <section className="timeline-card">
               <div className="timeline-heading">
                 <span>时间线</span>
@@ -369,8 +372,7 @@ function updateTaskCache(
       tasks: current.tasks.map((task) => (task.id === updated.id ? updated : task)),
     };
   });
-  void queryClient.invalidateQueries({ queryKey: ["tasks"] });
-  void queryClient.invalidateQueries({ queryKey: ["projects"] });
+  void invalidateTaskData(queryClient);
 }
 
 function eventLabel(kind: string): string {

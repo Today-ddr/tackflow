@@ -5,6 +5,7 @@ import { ArrowLeft, CornerDownLeft, Hash, Rocket } from "lucide-react";
 import { api, errorMessage, type Task } from "../lib/api";
 import { previewCapture } from "../lib/capture-preview";
 import { useToast } from "./toast";
+import { invalidateTaskData } from "../app/task-cache";
 
 interface CapturePageProps {
   onBack: () => void;
@@ -29,9 +30,7 @@ export function CapturePage({ onBack }: CapturePageProps) {
       }),
     onSuccess: () => {
       setText("");
-      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      void queryClient.invalidateQueries({ queryKey: ["projects"] });
-      void queryClient.invalidateQueries({ queryKey: ["tags"] });
+      void invalidateTaskData(queryClient);
       notify("已钉进收件箱", "success");
       inputRef.current?.focus();
     },
