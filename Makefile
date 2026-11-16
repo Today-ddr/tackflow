@@ -22,6 +22,7 @@ go-build: web-build
 	mkdir -p bin
 	go build -trimpath -ldflags "-X main.version=$$(cat VERSION) -X main.commit=$$(git rev-parse --short HEAD) -X main.buildTime=$$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/tack ./cmd/tack
 	go build -trimpath -o bin/tack-updater ./cmd/updater
+	go build -trimpath -o bin/tack-bridge ./cmd/tack-bridge
 
 web-deps:
 	pnpm -C web install --frozen-lockfile
