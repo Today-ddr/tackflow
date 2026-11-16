@@ -167,3 +167,26 @@ func TestSessionByIDRejectsExpiredSession(t *testing.T) {
 		t.Fatalf("SessionByID(expired) error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestBackupCreatesReadableCopy(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	dataDir := t.TempDir()
+	st, err := Open(ctx, dataDir)
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if err := st.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	destination := filepath.Join(dataDir, "backups", "manual.db")
+	if err := st.Backup(ctx, destination); err != nil {
+		t.Fatalf("Backup() error = %v", err)
+	}
+	if info, err := os.Stat(destination); err != nil || info.Size() == 0 {
+		t.Fatalf("backup file is empty or missing: info=%v err=%v", info, err)
+	}
+}
