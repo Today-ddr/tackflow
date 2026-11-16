@@ -1,0 +1,2 @@
+ALTER TABLE api_token ADD COLUMN project_ids TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE api_token ADD COLUMN tag_ids TEXT NOT NULL DEFAULT '[]';

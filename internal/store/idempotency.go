@@ -13,6 +13,20 @@ type CachedResponse struct {
 	Body   []byte
 }
 
+func (s *Store) ReserveIdempotency(ctx context.Context, key string, now time.Time) (bool, error) {
+	result, err := s.db.ExecContext(ctx, `INSERT INTO idempotency(key,status,body,created_at) VALUES (?,0,'',?) ON CONFLICT(key) DO NOTHING`, key, now.UTC().Format(time.RFC3339))
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	return affected == 1, err
+}
+
+func (s *Store) DeleteIdempotency(ctx context.Context, key string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM idempotency WHERE key = ? AND status = 0", key)
+	return err
+}
+
 func (s *Store) GetIdempotency(ctx context.Context, key string, now time.Time) (CachedResponse, bool, error) {
 	var response CachedResponse
 	var body string

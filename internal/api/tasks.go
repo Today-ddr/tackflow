@@ -65,10 +65,9 @@ type linkDTO struct {
 }
 
 func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request) {
-	filter := store.TaskFilter{
-		Query:  strings.TrimSpace(r.URL.Query().Get("q")),
-		Cursor: strings.TrimSpace(r.URL.Query().Get("cursor")),
-	}
+	filter := s.taskFilter(r)
+	filter.Query = strings.TrimSpace(r.URL.Query().Get("q"))
+	filter.Cursor = strings.TrimSpace(r.URL.Query().Get("cursor"))
 	if raw := strings.TrimSpace(r.URL.Query().Get("status")); raw != "" {
 		for _, status := range strings.Split(raw, ",") {
 			status = strings.TrimSpace(status)
@@ -194,9 +193,8 @@ func (s *Server) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	tagIDs, err := s.resolveTags(r, request.Tags, request.TagIDs)
-	if err != nil {
-		s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_tags", "标签不存在")
+	tagIDs, ok := s.resolveTaskMembership(w, r, request.ProjectID, request.Tags, request.TagIDs)
+	if !ok {
 		return
 	}
 	item, err := s.store.CreateTask(r.Context(), store.CreateTaskParams{
@@ -229,6 +227,10 @@ func (s *Server) handleGetTask(w http.ResponseWriter, r *http.Request) {
 		s.writeTaskError(w, r, err)
 		return
 	}
+	if !s.taskAllowed(r, item) {
+		s.writeTaskError(w, r, store.ErrNotFound)
+		return
+	}
 	events, err := s.store.TaskEvents(r.Context(), id)
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法读取任务时间线")
@@ -250,6 +252,15 @@ func (s *Server) handlePatchTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "任务 ID 不正确")
+		return
+	}
+	current, err := s.store.TaskByID(r.Context(), id)
+	if err != nil {
+		s.writeTaskError(w, r, err)
+		return
+	}
+	if !s.taskAllowed(r, current) {
+		s.writeTaskError(w, r, store.ErrNotFound)
 		return
 	}
 	var request struct {
@@ -328,6 +339,10 @@ func (s *Server) handlePatchTask(w http.ResponseWriter, r *http.Request) {
 			params.DueAt = dueAt
 		}
 	}
+	projectID := current.ProjectID
+	if params.ProjectSet {
+		projectID = params.ProjectID
+	}
 	if len(request.Tags) > 0 || len(request.TagIDs) > 0 {
 		var names []string
 		var ids []int64
@@ -343,13 +358,20 @@ func (s *Server) handlePatchTask(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		tagIDs, err := s.resolveTags(r, names, ids)
-		if err != nil {
-			s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_tags", "标签不存在")
+		tagIDs, ok := s.resolveTaskMembership(w, r, projectID, names, ids)
+		if !ok {
 			return
 		}
 		params.TagsSet = true
 		params.TagIDs = tagIDs
+	} else {
+		ids := make([]int64, 0, len(current.Tags))
+		for _, tag := range current.Tags {
+			ids = append(ids, tag.ID)
+		}
+		if !s.requireTaskMembership(w, r, projectID, ids) {
+			return
+		}
 	}
 	item, err := s.store.UpdateTask(r.Context(), id, params, s.now().UTC())
 	if err != nil {
@@ -365,6 +387,9 @@ func (s *Server) handleDeleteTask(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "任务 ID 不正确")
 		return
 	}
+	if !s.requireTaskAccess(w, r, id) {
+		return
+	}
 	if err := s.store.DeleteTask(r.Context(), id, s.now().UTC()); err != nil {
 		s.writeTaskError(w, r, err)
 		return
@@ -376,6 +401,9 @@ func (s *Server) handleMoveTask(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "任务 ID 不正确")
+		return
+	}
+	if !s.requireTaskAccess(w, r, id) {
 		return
 	}
 	var request struct {
@@ -406,6 +434,9 @@ func (s *Server) handleCommentTask(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "任务 ID 不正确")
 		return
 	}
+	if !s.requireTaskAccess(w, r, id) {
+		return
+	}
 	var request struct {
 		Text string `json:"text"`
 	}
@@ -432,8 +463,7 @@ func (s *Server) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "任务 ID 不正确")
 		return
 	}
-	if _, err := s.store.TaskByID(r.Context(), id); err != nil {
-		s.writeTaskError(w, r, err)
+	if !s.requireTaskAccess(w, r, id) {
 		return
 	}
 	events, err := s.store.TaskEvents(r.Context(), id)
@@ -474,9 +504,8 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		}
 		projectID = &project.ID
 	}
-	tagIDs, err := s.resolveTags(r, parsed.Tags, nil)
-	if err != nil {
-		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法保存标签")
+	tagIDs, ok := s.resolveTaskMembership(w, r, projectID, parsed.Tags, nil)
+	if !ok {
 		return
 	}
 	item, err := s.store.CreateTask(r.Context(), store.CreateTaskParams{
@@ -511,6 +540,7 @@ func (s *Server) resolveTags(r *http.Request, names []string, ids []int64) ([]in
 	result := make([]int64, 0, len(names)+len(ids))
 	seenIDs := make(map[int64]struct{})
 	seenNames := make(map[string]struct{})
+	restricted := s.resourceLimited(r)
 	for _, name := range names {
 		name = strings.TrimSpace(strings.TrimPrefix(name, "#"))
 		if name == "" {
@@ -521,9 +551,13 @@ func (s *Server) resolveTags(r *http.Request, names []string, ids []int64) ([]in
 			continue
 		}
 		seenNames[key] = struct{}{}
-		tag, _, err := s.store.EnsureTag(
-			r.Context(), name, taskdomain.ColorForName(name), s.now().UTC(),
-		)
+		var tag store.Tag
+		var err error
+		if restricted {
+			tag, err = s.store.TagByName(r.Context(), name)
+		} else {
+			tag, _, err = s.store.EnsureTag(r.Context(), name, taskdomain.ColorForName(name), s.now().UTC())
+		}
 		if err != nil {
 			return nil, err
 		}

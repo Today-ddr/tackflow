@@ -114,6 +114,7 @@ func serve(getenv func(string) string, stdout io.Writer) error {
 		updateService,
 		update.NewUpdaterClient(cfg.UpdaterURL, cfg.UpdaterToken),
 	)
+	apiServer.StartWebhookDelivery(ctx)
 	handler := apiServer.Handler()
 	server := &http.Server{
 		Addr:              cfg.Addr,

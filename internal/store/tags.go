@@ -5,7 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/today/tack/internal/tasks"
+)
+
+var (
+	ErrTagExists  = errors.New("tag already exists")
+	ErrInvalidTag = errors.New("invalid tag")
 )
 
 type Tag struct {
@@ -129,6 +137,41 @@ func (s *Store) DeleteTag(ctx context.Context, id int64) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (s *Store) UpdateTag(ctx context.Context, id int64, name, color *string) (Tag, error) {
+	if name != nil {
+		normalized := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(*name), "#"))
+		if normalized == "" || len([]rune(normalized)) > 80 {
+			return Tag{}, ErrInvalidTag
+		}
+		name = &normalized
+	}
+	if color != nil {
+		normalized := strings.TrimSpace(*color)
+		if !tasks.ValidColor(normalized) {
+			return Tag{}, ErrInvalidTag
+		}
+		color = &normalized
+	}
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE tag SET name = COALESCE(?, name), color = COALESCE(?, color)
+		WHERE id = ? AND NOT EXISTS (SELECT 1 FROM tag duplicate WHERE duplicate.name = ? AND duplicate.id <> ?)
+	`, name, color, id, name, id)
+	if err != nil {
+		return Tag{}, fmt.Errorf("update tag: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return Tag{}, err
+	}
+	if affected == 0 {
+		if _, err := s.TagByID(ctx, id); err != nil {
+			return Tag{}, err
+		}
+		return Tag{}, ErrTagExists
+	}
+	return s.TagByID(ctx, id)
 }
 
 type tagScanner interface {

@@ -31,6 +31,16 @@ func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法导出标签")
 		return
 	}
+	projects, err = s.visibleProjects(r, projects)
+	if err != nil {
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法导出项目")
+		return
+	}
+	tags, err = s.visibleTags(r, tags)
+	if err != nil {
+		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法导出标签")
+		return
+	}
 	tasks, err := s.allTasks(r)
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法导出任务")
@@ -115,10 +125,10 @@ func (s *Server) allTasks(r *http.Request) ([]store.Task, error) {
 	result := make([]store.Task, 0)
 	cursor := ""
 	for {
-		items, next, err := s.store.ListTasks(r.Context(), store.TaskFilter{
-			Limit:  500,
-			Cursor: cursor,
-		})
+		filter := s.taskFilter(r)
+		filter.Limit = 500
+		filter.Cursor = cursor
+		items, next, err := s.store.ListTasks(r.Context(), filter)
 		if err != nil {
 			return nil, err
 		}

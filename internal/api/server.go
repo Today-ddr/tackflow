@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"mime"
@@ -34,16 +35,17 @@ type BuildInfo struct {
 }
 
 type Server struct {
-	cfg       config.Config
-	store     *store.Store
-	assets    fs.FS
-	build     BuildInfo
-	logger    *slog.Logger
-	now       func() time.Time
-	limiter   *loginLimiter
-	changelog string
-	updateSvc *update.Service
-	updater   *update.UpdaterClient
+	cfg          config.Config
+	store        *store.Store
+	assets       fs.FS
+	build        BuildInfo
+	logger       *slog.Logger
+	now          func() time.Time
+	limiter      *loginLimiter
+	changelog    string
+	updateSvc    *update.Service
+	updater      *update.UpdaterClient
+	mutationGate chan struct{}
 }
 
 func NewServer(
@@ -67,13 +69,14 @@ func NewServer(
 		cfg.TimezoneName = cfg.Timezone.String()
 	}
 	return &Server{
-		cfg:     cfg,
-		store:   st,
-		assets:  assets,
-		build:   build,
-		logger:  logger,
-		now:     now,
-		limiter: newLoginLimiter(now, 5, time.Minute),
+		cfg:          cfg,
+		store:        st,
+		assets:       assets,
+		build:        build,
+		logger:       logger,
+		now:          now,
+		limiter:      newLoginLimiter(now, 5, time.Minute),
+		mutationGate: make(chan struct{}, 1),
 	}
 }
 
@@ -110,10 +113,11 @@ func (s *Server) routes() http.Handler {
 
 	mux.Handle("GET /api/v1/tags", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleListTags))))
 	mux.Handle("POST /api/v1/tags", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleCreateTag)))))
+	mux.Handle("PATCH /api/v1/tags/{id}", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handlePatchTag)))))
 	mux.Handle("DELETE /api/v1/tags/{id}", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleDeleteTag)))))
 
 	mux.Handle("GET /api/v1/tokens", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleListTokens))))
-	mux.Handle("POST /api/v1/tokens", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleCreateToken)))))
+	mux.Handle("POST /api/v1/tokens", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleCreateToken), s.authorizeTokenSecretReplay))))
 	mux.Handle("DELETE /api/v1/tokens/{id}", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleRevokeToken)))))
 
 	mux.Handle("GET /api/v1/sessions", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleListSessions))))
@@ -126,6 +130,11 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("POST /api/v1/update/apply", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateApply)))))
 	mux.Handle("POST /api/v1/update/rollback", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateRollback)))))
 	mux.Handle("GET /api/v1/export", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleExport))))
+	s.registerPasskeyRoutes(mux)
+	s.registerEventRoutes(mux)
+	s.registerWebhookRoutes(mux)
+	s.registerAgentRoutes(mux)
+	s.registerTrashRoutes(mux)
 
 	mux.HandleFunc("/", s.handleStatic)
 	return mux
@@ -184,7 +193,23 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 				User:     user,
 				APIToken: &apiToken,
 			})
-			next.ServeHTTP(w, r.WithContext(ctx))
+			r = r.WithContext(ctx)
+			if r.Method != http.MethodGet && r.Method != http.MethodHead {
+				if !s.prepareMutation(w, r) {
+					return
+				}
+				defer func() { <-s.mutationGate }()
+				if _, err := s.store.APITokenByHash(r.Context(), apiToken.Hash); err != nil {
+					s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "API 令牌已失效")
+					return
+				}
+			}
+			if s.resourceLimited(r) && r.Method != http.MethodGet && r.Method != http.MethodHead &&
+				(strings.HasPrefix(r.URL.Path, "/api/v1/projects") || strings.HasPrefix(r.URL.Path, "/api/v1/tags")) {
+				s.writeError(w, r, http.StatusForbidden, "resource_forbidden", "受限令牌不能修改全局项目或标签")
+				return
+			}
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -223,8 +248,41 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			}
 		}
 		ctx := context.WithValue(r.Context(), authContextKey{}, principal)
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			if !s.prepareMutation(w, r) {
+				return
+			}
+			defer func() { <-s.mutationGate }()
+			if _, err := s.store.SessionByID(r.Context(), session.ID, s.now().UTC()); err != nil {
+				s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "登录已失效")
+				return
+			}
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (s *Server) prepareMutation(w http.ResponseWriter, r *http.Request) bool {
+	controller := http.NewResponseController(w)
+	_ = controller.SetReadDeadline(time.Now().Add(10 * time.Second))
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	_ = r.Body.Close()
+	_ = controller.SetReadDeadline(time.Time{})
+	if err != nil {
+		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求体过大、未完整送达或已超时")
+		return false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	select {
+	case <-r.Context().Done():
+		return false
+	case s.mutationGate <- struct{}{}:
+		if r.Context().Err() != nil {
+			<-s.mutationGate
+			return false
+		}
+		return true
+	}
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -288,6 +346,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.createSession(w, r, user)
+}
+
+func (s *Server) createSession(w http.ResponseWriter, r *http.Request, user store.User) {
 	cookieValue, sessionID, err := auth.NewSessionToken(s.cfg.SessionSecret)
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "登录失败")
@@ -295,7 +357,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	now := s.now().UTC()
 	expiresAt := now.Add(s.cfg.SessionTTL)
-	if err := s.store.CreateSession(r.Context(), sessionID, user.ID, now, expiresAt, r.UserAgent(), ip); err != nil {
+	if err := s.store.CreateSession(r.Context(), sessionID, user.ID, now, expiresAt, r.UserAgent(), clientIP(r)); err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "登录失败")
 		return
 	}

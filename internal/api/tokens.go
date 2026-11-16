@@ -16,6 +16,8 @@ type tokenResponse struct {
 	Name       string   `json:"name"`
 	Prefix     string   `json:"prefix"`
 	Scopes     []string `json:"scopes"`
+	ProjectIDs []int64  `json:"project_ids"`
+	TagIDs     []int64  `json:"tag_ids"`
 	CreatedAt  string   `json:"created_at"`
 	LastUsedAt *string  `json:"last_used_at"`
 }
@@ -38,6 +40,8 @@ func (s *Server) handleListTokens(w http.ResponseWriter, r *http.Request) {
 			Name:       token.Name,
 			Prefix:     token.Prefix,
 			Scopes:     token.Scopes,
+			ProjectIDs: token.ProjectIDs,
+			TagIDs:     token.TagIDs,
 			CreatedAt:  token.CreatedAt.Format(time.RFC3339),
 			LastUsedAt: lastUsedAt,
 		})
@@ -47,9 +51,11 @@ func (s *Server) handleListTokens(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 	var request struct {
-		Name     string   `json:"name"`
-		Scopes   []string `json:"scopes"`
-		Password string   `json:"password"`
+		Name       string   `json:"name"`
+		Scopes     []string `json:"scopes"`
+		Password   string   `json:"password"`
+		ProjectIDs []int64  `json:"project_ids"`
+		TagIDs     []int64  `json:"tag_ids"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求格式不正确")
@@ -67,6 +73,22 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_scopes", "令牌权限不正确")
 		return
 	}
+	if len(request.ProjectIDs) > 100 || len(request.TagIDs) > 100 {
+		s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_resources", "项目或标签范围过大")
+		return
+	}
+	for _, id := range request.ProjectIDs {
+		if id <= 0 || s.validateProject(r, id) != nil {
+			s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_resources", "项目不存在或已归档")
+			return
+		}
+	}
+	for _, id := range request.TagIDs {
+		if _, err := s.store.TagByID(r.Context(), id); id <= 0 || err != nil {
+			s.writeError(w, r, http.StatusUnprocessableEntity, "invalid_resources", "标签不存在")
+			return
+		}
+	}
 	rawToken, prefix, hash, err := auth.NewAPIToken()
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法生成令牌")
@@ -74,6 +96,7 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := s.store.CreateAPIToken(
 		r.Context(), request.Name, prefix, hash, request.Scopes, s.now().UTC(),
+		store.TokenResources{ProjectIDs: request.ProjectIDs, TagIDs: request.TagIDs},
 	)
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法保存令牌")
@@ -82,13 +105,30 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusCreated, map[string]any{
 		"token": rawToken,
 		"api_token": tokenResponse{
-			ID:        token.ID,
-			Name:      token.Name,
-			Prefix:    token.Prefix,
-			Scopes:    token.Scopes,
-			CreatedAt: token.CreatedAt.Format(time.RFC3339),
+			ID:         token.ID,
+			Name:       token.Name,
+			Prefix:     token.Prefix,
+			Scopes:     token.Scopes,
+			ProjectIDs: token.ProjectIDs,
+			TagIDs:     token.TagIDs,
+			CreatedAt:  token.CreatedAt.Format(time.RFC3339),
 		},
 	})
+}
+
+func (s *Server) authorizeTokenSecretReplay(w http.ResponseWriter, r *http.Request) bool {
+	principal, ok := s.principal(r)
+	if ok && principal.Session != nil && principal.Session.SudoUntil != nil && principal.Session.SudoUntil.After(s.now().UTC()) {
+		return true
+	}
+	var request struct {
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(w, r, &request); err != nil && !errors.Is(err, io.EOF) {
+		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求格式不正确")
+		return false
+	}
+	return s.confirmSudo(w, r, request.Password)
 }
 
 func (s *Server) handleRevokeToken(w http.ResponseWriter, r *http.Request) {

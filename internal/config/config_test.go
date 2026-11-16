@@ -110,3 +110,22 @@ func mapEnv(values map[string]string) func(string) string {
 		return values[key]
 	}
 }
+
+func TestWebhookPrivateTargetsRequireExplicitOptIn(t *testing.T) {
+	for _, value := range []string{"", "false", "true", "invalid"} {
+		cfg, err := Load(mapEnv(map[string]string{
+			"TACK_PUBLIC_URL":            "http://localhost:8080",
+			"TACK_SESSION_SECRET":        base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32)),
+			"TACK_WEBHOOK_ALLOW_PRIVATE": value,
+		}))
+		if value == "invalid" {
+			if err == nil {
+				t.Fatal("invalid private-target flag accepted")
+			}
+			continue
+		}
+		if err != nil || cfg.WebhookAllowPrivate != (value == "true") {
+			t.Fatalf("private-target flag %q = %v, %v", value, cfg.WebhookAllowPrivate, err)
+		}
+	}
+}

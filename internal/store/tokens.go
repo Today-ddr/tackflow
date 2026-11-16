@@ -15,9 +15,16 @@ type APIToken struct {
 	Prefix     string
 	Hash       string
 	Scopes     []string
+	ProjectIDs []int64
+	TagIDs     []int64
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	RevokedAt  *time.Time
+}
+
+type TokenResources struct {
+	ProjectIDs []int64
+	TagIDs     []int64
 }
 
 func (s *Store) CreateAPIToken(
@@ -25,16 +32,29 @@ func (s *Store) CreateAPIToken(
 	name, prefix, hash string,
 	scopes []string,
 	now time.Time,
+	resources ...TokenResources,
 ) (APIToken, error) {
 	scopesJSON, err := json.Marshal(scopes)
 	if err != nil {
 		return APIToken{}, err
 	}
+	allowed := TokenResources{ProjectIDs: []int64{}, TagIDs: []int64{}}
+	if len(resources) > 0 {
+		allowed = resources[0]
+	}
+	projectJSON, err := json.Marshal(allowed.ProjectIDs)
+	if err != nil {
+		return APIToken{}, err
+	}
+	tagJSON, err := json.Marshal(allowed.TagIDs)
+	if err != nil {
+		return APIToken{}, err
+	}
 	result, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO api_token(name, prefix, hash, scopes, created_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		name, prefix, hash, string(scopesJSON), now.UTC().Format(time.RFC3339),
+		`INSERT INTO api_token(name, prefix, hash, scopes, created_at, project_ids, tag_ids)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		name, prefix, hash, string(scopesJSON), now.UTC().Format(time.RFC3339), string(projectJSON), string(tagJSON),
 	)
 	if err != nil {
 		return APIToken{}, fmt.Errorf("insert api token: %w", err)
@@ -48,7 +68,7 @@ func (s *Store) CreateAPIToken(
 
 func (s *Store) APITokenByID(ctx context.Context, id int64) (APIToken, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at
+		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids
 		FROM api_token WHERE id = ?
 	`, id)
 	token, err := scanAPIToken(row)
@@ -63,7 +83,7 @@ func (s *Store) APITokenByID(ctx context.Context, id int64) (APIToken, error) {
 
 func (s *Store) APITokenByHash(ctx context.Context, hash string) (APIToken, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at
+		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids
 		FROM api_token WHERE hash = ? AND revoked_at IS NULL
 	`, hash)
 	token, err := scanAPIToken(row)
@@ -78,7 +98,7 @@ func (s *Store) APITokenByHash(ctx context.Context, hash string) (APIToken, erro
 
 func (s *Store) ListAPITokens(ctx context.Context) ([]APIToken, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at
+		SELECT id, name, prefix, hash, scopes, created_at, last_used_at, revoked_at, project_ids, tag_ids
 		FROM api_token
 		WHERE revoked_at IS NULL
 		ORDER BY created_at DESC, id DESC
@@ -139,6 +159,7 @@ type apiTokenScanner interface {
 func scanAPIToken(scanner apiTokenScanner) (APIToken, error) {
 	var token APIToken
 	var scopesJSON, createdAt string
+	var projectsJSON, tagsJSON string
 	var lastUsedAt, revokedAt sql.NullString
 	if err := scanner.Scan(
 		&token.ID,
@@ -149,11 +170,25 @@ func scanAPIToken(scanner apiTokenScanner) (APIToken, error) {
 		&createdAt,
 		&lastUsedAt,
 		&revokedAt,
+		&projectsJSON,
+		&tagsJSON,
 	); err != nil {
 		return APIToken{}, err
 	}
 	if err := json.Unmarshal([]byte(scopesJSON), &token.Scopes); err != nil {
 		return APIToken{}, fmt.Errorf("parse api token scopes: %w", err)
+	}
+	if err := json.Unmarshal([]byte(projectsJSON), &token.ProjectIDs); err != nil {
+		return APIToken{}, fmt.Errorf("parse api token projects: %w", err)
+	}
+	if err := json.Unmarshal([]byte(tagsJSON), &token.TagIDs); err != nil {
+		return APIToken{}, fmt.Errorf("parse api token tags: %w", err)
+	}
+	if token.ProjectIDs == nil {
+		token.ProjectIDs = []int64{}
+	}
+	if token.TagIDs == nil {
+		token.TagIDs = []int64{}
 	}
 	parsed, err := time.Parse(time.RFC3339, createdAt)
 	if err != nil {

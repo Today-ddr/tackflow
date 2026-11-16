@@ -52,14 +52,16 @@ type TaskLink struct {
 }
 
 type TaskFilter struct {
-	Statuses     []string
-	ProjectID    *int64
-	TagID        *int64
-	Query        string
-	AgentReady   *bool
-	UpdatedSince *time.Time
-	Limit        int
-	Cursor       string
+	AllowedProjectIDs []int64
+	AllowedTagIDs     []int64
+	Statuses          []string
+	ProjectID         *int64
+	TagID             *int64
+	Query             string
+	AgentReady        *bool
+	UpdatedSince      *time.Time
+	Limit             int
+	Cursor            string
 }
 
 type CreateTaskParams struct {
@@ -99,6 +101,22 @@ func (s *Store) ListTasks(ctx context.Context, filter TaskFilter) ([]Task, strin
 
 	where := []string{"t.deleted_at IS NULL"}
 	args := make([]any, 0, 8)
+	if len(filter.AllowedProjectIDs) > 0 {
+		placeholders := make([]string, 0, len(filter.AllowedProjectIDs))
+		for _, id := range filter.AllowedProjectIDs {
+			placeholders = append(placeholders, "?")
+			args = append(args, id)
+		}
+		where = append(where, "t.project_id IN ("+strings.Join(placeholders, ",")+")")
+	}
+	if len(filter.AllowedTagIDs) > 0 {
+		placeholders := make([]string, 0, len(filter.AllowedTagIDs))
+		for _, id := range filter.AllowedTagIDs {
+			placeholders = append(placeholders, "?")
+			args = append(args, id)
+		}
+		where = append(where, "EXISTS (SELECT 1 FROM task_tag acl WHERE acl.task_id = t.id AND acl.tag_id IN ("+strings.Join(placeholders, ",")+"))")
+	}
 	if len(filter.Statuses) > 0 {
 		placeholders := make([]string, 0, len(filter.Statuses))
 		for _, status := range filter.Statuses {
@@ -206,6 +224,15 @@ func (s *Store) CreateTask(ctx context.Context, params CreateTaskParams) (Task, 
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	var taskID int64
+	if err := tx.QueryRowContext(ctx, `
+		UPDATE resource_sequence SET last_id = last_id + 1
+		WHERE resource = 'task' AND last_id < 9223372036854775807
+		RETURNING last_id
+	`).Scan(&taskID); err != nil {
+		return Task{}, fmt.Errorf("allocate task identity: %w", err)
+	}
+
 	position := float64(0)
 	if params.Position != nil {
 		position = *params.Position
@@ -230,12 +257,13 @@ func (s *Store) CreateTask(ctx context.Context, params CreateTaskParams) (Task, 
 		projectID = *params.ProjectID
 	}
 
-	result, err := tx.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO task(
-			project_id, title, notes, status, priority, position, due_at,
+			id, project_id, title, notes, status, priority, position, due_at,
 			agent_ready, created_at, updated_at, completed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
+		taskID,
 		projectID,
 		params.Title,
 		params.Notes,
@@ -250,10 +278,6 @@ func (s *Store) CreateTask(ctx context.Context, params CreateTaskParams) (Task, 
 	)
 	if err != nil {
 		return Task{}, fmt.Errorf("insert task: %w", err)
-	}
-	taskID, err := result.LastInsertId()
-	if err != nil {
-		return Task{}, err
 	}
 	if err := replaceTaskTags(ctx, tx, taskID, params.TagIDs); err != nil {
 		return Task{}, err

@@ -13,6 +13,9 @@ func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	includeArchived := r.URL.Query().Get("include_archived") == "1" ||
 		r.URL.Query().Get("include_archived") == "true"
 	projects, err := s.store.ListProjects(r.Context(), includeArchived)
+	if err == nil {
+		projects, err = s.visibleProjects(r, projects)
+	}
 	if err != nil {
 		s.writeError(w, r, http.StatusInternalServerError, "internal_error", "无法读取项目")
 		return
@@ -74,6 +77,9 @@ func (s *Server) handlePatchProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求格式不正确")
+		return
+	}
+	if request.Archived != nil && !s.requireSudo(w, r) {
 		return
 	}
 	if request.Name != nil {

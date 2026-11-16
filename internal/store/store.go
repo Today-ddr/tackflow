@@ -29,6 +29,18 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve database path: %w", err)
 	}
+	file, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("prepare database file: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return nil, err
+	}
+	for _, filename := range []string{dbPath, dbPath + "-wal", dbPath + "-shm"} {
+		if err := os.Chmod(filename, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("secure database file: %w", err)
+		}
+	}
 	dsn := (&url.URL{
 		Scheme:   "file",
 		Path:     dbPath,

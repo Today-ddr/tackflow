@@ -33,8 +33,8 @@ func TestOpenMigrateAndBootstrapAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion() error = %v", err)
 	}
-	if version != 2 {
-		t.Errorf("SchemaVersion() = %d, want 2", version)
+	if version != 9 {
+		t.Errorf("SchemaVersion() = %d, want 9", version)
 	}
 
 	var journalMode string
@@ -85,8 +85,10 @@ func TestOpenMigrateAndBootstrapAdmin(t *testing.T) {
 	if user.PasswordHash != "hash-one" {
 		t.Errorf("PasswordHash = %q, want hash-one", user.PasswordHash)
 	}
-	if _, err := os.Stat(filepath.Join(dataDir, "tack.db")); err != nil {
+	if info, err := os.Stat(filepath.Join(dataDir, "tack.db")); err != nil {
 		t.Errorf("tack.db not created: %v", err)
+	} else if info.Mode().Perm() != 0o600 {
+		t.Errorf("database permissions = %o, want 600", info.Mode().Perm())
 	}
 }
 
@@ -131,14 +133,44 @@ func TestMigrateUpgradesV1Database(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion() error = %v", err)
 	}
-	if version != 2 {
-		t.Fatalf("SchemaVersion() = %d, want 2", version)
+	if version != 9 {
+		t.Fatalf("SchemaVersion() = %d, want 9", version)
 	}
 	if _, err := st.SessionByID(ctx, "existing", now); err != nil {
 		t.Fatalf("existing session lost after migration: %v", err)
 	}
 	if err := st.SetSessionSudo(ctx, "existing", now.Add(5*time.Minute)); err != nil {
 		t.Fatalf("SetSessionSudo() after migration: %v", err)
+	}
+}
+
+func TestMigratePreservesExistingUnrestrictedToken(t *testing.T) {
+	st, err := Open(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if _, err := st.db.ExecContext(t.Context(), "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	for index, name := range []string{"0001_init.sql", "0002_m1_core.sql"} {
+		body, err := migrations.FS.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := st.applyMigration(t.Context(), index+1, string(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.db.ExecContext(t.Context(), `INSERT INTO api_token(name,prefix,hash,scopes,created_at) VALUES ('legacy','tk_old','hash','["read"]','2026-11-16T09:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Migrate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	token, err := st.APITokenByHash(t.Context(), "hash")
+	if err != nil || token.Name != "legacy" || len(token.ProjectIDs) != 0 || len(token.TagIDs) != 0 {
+		t.Fatalf("migration changed existing token: %+v, %v", token, err)
 	}
 }
 
@@ -242,5 +274,7 @@ func TestBackupCreatesReadableCopy(t *testing.T) {
 	}
 	if info, err := os.Stat(destination); err != nil || info.Size() == 0 {
 		t.Fatalf("backup file is empty or missing: info=%v err=%v", info, err)
+	} else if info.Mode().Perm() != 0o600 {
+		t.Errorf("backup permissions = %o, want 600", info.Mode().Perm())
 	}
 }

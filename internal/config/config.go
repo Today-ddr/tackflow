@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -12,21 +13,22 @@ const defaultSessionTTL = 30 * 24 * time.Hour
 
 // Config contains the process-wide settings needed before the HTTP server starts.
 type Config struct {
-	Addr          string
-	PublicURL     string
-	DataDir       string
-	AdminUsername string
-	AdminPassword string
-	SessionSecret []byte
-	CookieSecure  bool
-	SessionTTL    time.Duration
-	Timezone      *time.Location
-	TimezoneName  string
-	GitHubRepo    string
-	GitHubToken   string
-	UpdaterURL    string
-	UpdaterToken  string
-	ImageTag      string
+	Addr                string
+	PublicURL           string
+	DataDir             string
+	AdminUsername       string
+	AdminPassword       string
+	SessionSecret       []byte
+	CookieSecure        bool
+	SessionTTL          time.Duration
+	Timezone            *time.Location
+	TimezoneName        string
+	GitHubRepo          string
+	GitHubToken         string
+	UpdaterURL          string
+	UpdaterToken        string
+	ImageTag            string
+	WebhookAllowPrivate bool
 }
 
 // Load reads configuration from environment values without mutating the process.
@@ -58,23 +60,31 @@ func Load(getenv func(string) string) (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("TACK_TZ is invalid: %w", err)
 	}
+	allowPrivate := false
+	if raw := strings.TrimSpace(getenv("TACK_WEBHOOK_ALLOW_PRIVATE")); raw != "" {
+		allowPrivate, err = strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("TACK_WEBHOOK_ALLOW_PRIVATE must be a boolean")
+		}
+	}
 
 	cfg := Config{
-		Addr:          valueOrDefault(getenv("TACK_ADDR"), ":8080"),
-		PublicURL:     strings.TrimRight(publicURL, "/"),
-		DataDir:       valueOrDefault(getenv("TACK_DATA_DIR"), "./data"),
-		AdminUsername: valueOrDefault(getenv("TACK_ADMIN_USERNAME"), "admin"),
-		AdminPassword: getenv("TACK_ADMIN_PASSWORD"),
-		SessionSecret: sessionSecret,
-		CookieSecure:  parsedURL.Scheme == "https",
-		SessionTTL:    defaultSessionTTL,
-		Timezone:      timezone,
-		TimezoneName:  timezoneName,
-		GitHubRepo:    strings.TrimSpace(getenv("TACK_GITHUB_REPO")),
-		GitHubToken:   strings.TrimSpace(getenv("TACK_GITHUB_TOKEN")),
-		UpdaterURL:    strings.TrimRight(strings.TrimSpace(getenv("TACK_UPDATER_URL")), "/"),
-		UpdaterToken:  strings.TrimSpace(getenv("TACK_UPDATER_TOKEN")),
-		ImageTag:      strings.TrimSpace(getenv("TACK_IMAGE_TAG")),
+		Addr:                valueOrDefault(getenv("TACK_ADDR"), ":8080"),
+		PublicURL:           strings.TrimRight(publicURL, "/"),
+		DataDir:             valueOrDefault(getenv("TACK_DATA_DIR"), "./data"),
+		AdminUsername:       valueOrDefault(getenv("TACK_ADMIN_USERNAME"), "admin"),
+		AdminPassword:       getenv("TACK_ADMIN_PASSWORD"),
+		SessionSecret:       sessionSecret,
+		CookieSecure:        parsedURL.Scheme == "https",
+		SessionTTL:          defaultSessionTTL,
+		Timezone:            timezone,
+		TimezoneName:        timezoneName,
+		GitHubRepo:          strings.TrimSpace(getenv("TACK_GITHUB_REPO")),
+		GitHubToken:         strings.TrimSpace(getenv("TACK_GITHUB_TOKEN")),
+		UpdaterURL:          strings.TrimRight(strings.TrimSpace(getenv("TACK_UPDATER_URL")), "/"),
+		UpdaterToken:        strings.TrimSpace(getenv("TACK_UPDATER_TOKEN")),
+		ImageTag:            strings.TrimSpace(getenv("TACK_IMAGE_TAG")),
+		WebhookAllowPrivate: allowPrivate,
 	}
 	return cfg, nil
 }
