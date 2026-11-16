@@ -2,9 +2,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api, type LoginResponse, type Me } from "../lib/api";
 import { AppShell } from "../components/app-shell";
 import { LoginForm } from "../components/login-form";
+import { usePathname } from "../lib/navigation";
 
 export default function App() {
   const queryClient = useQueryClient();
+  const [path, navigate] = usePathname();
   const meQuery = useQuery<Me | null>({
     queryKey: ["me"],
     queryFn: async () => {
@@ -44,6 +46,7 @@ export default function App() {
         onSuccess={(result: LoginResponse) => {
           queryClient.setQueryData<Me | null>(["me"], () => ({
             user: result.user,
+            auth_kind: "session",
             sudo_expires_at: null,
           }));
         }}
@@ -54,7 +57,12 @@ export default function App() {
   return (
     <AppShell
       me={meQuery.data}
-      onLogout={() => queryClient.setQueryData<Me | null>(["me"], null)}
+      path={path}
+      navigate={navigate}
+      onLogout={() => {
+        queryClient.setQueryData<Me | null>(["me"], null);
+        navigate("/");
+      }}
     />
   );
 }

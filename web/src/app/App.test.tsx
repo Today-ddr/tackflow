@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { createQueryClient } from "./query";
+import { ToastProvider } from "../components/toast";
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -15,9 +16,11 @@ function jsonResponse(body: unknown, status: number): Response {
 
 function renderApp() {
   return render(
-    <QueryClientProvider client={createQueryClient()}>
-      <App />
-    </QueryClientProvider>,
+    <ToastProvider>
+      <QueryClientProvider client={createQueryClient()}>
+        <App />
+      </QueryClientProvider>
+    </ToastProvider>,
   );
 }
 
@@ -58,13 +61,43 @@ describe("Tack login", () => {
             );
           }
           return jsonResponse(
-            { user: { username: "admin" }, sudo_expires_at: null },
+            {
+              user: { username: "admin" },
+              auth_kind: "session",
+              sudo_expires_at: null,
+            },
             200,
           );
         }
         if (url.endsWith("/api/v1/auth/login")) {
           loginCalls++;
           return jsonResponse({ user: { username: "admin" } }, 200);
+        }
+        if (url.includes("/api/v1/tasks")) {
+          return jsonResponse({ tasks: [], next_cursor: null }, 200);
+        }
+        if (url.endsWith("/api/v1/projects")) {
+          return jsonResponse({ projects: [] }, 200);
+        }
+        if (url.endsWith("/api/v1/tags")) {
+          return jsonResponse({ tags: [] }, 200);
+        }
+        if (url.endsWith("/api/v1/update/status")) {
+          return jsonResponse(
+            {
+              current_version: "0.1.0",
+              latest_version: null,
+              update_available: false,
+              interval_hours: 24,
+              last_checked_at: null,
+              last_error: "",
+              release_body: "",
+              release_url: "",
+              published_at: null,
+              configured: false,
+            },
+            200,
+          );
         }
         return jsonResponse({ error: { code: "not_found", message: "不存在", request_id: "req" } }, 404);
       }),
