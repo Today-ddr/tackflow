@@ -1,0 +1,28 @@
+# Local plans and agent scratch artifacts
+.superpowers/
+
+# Runtime data and secrets
+data/
+deploy/.env
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend dependencies and generated assets
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+
+# Build and test output
+bin/
+coverage/
+*.log
+*.out
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/
