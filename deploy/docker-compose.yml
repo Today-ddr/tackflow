@@ -17,6 +17,19 @@ services:
       timeout: 3s
       retries: 3
 
+  updater:
+    image: ghcr.io/${TACK_GHCR_OWNER:?set TACK_GHCR_OWNER}/tack-updater:${TACK_UPDATER_TAG:?set TACK_UPDATER_TAG}
+    user: "0:0"
+    env_file: .env
+    working_dir: /compose
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/compose
+      - ./data:/data
+    networks:
+      - control
+    restart: unless-stopped
+
   caddy:
     image: caddy:2
     environment:
