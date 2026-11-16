@@ -78,3 +78,23 @@ func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
 	}
 	return user, nil
 }
+
+func (s *Store) UpdatePassword(ctx context.Context, passwordHash string, now time.Time) error {
+	result, err := s.db.ExecContext(
+		ctx,
+		"UPDATE user SET password_hash = ?, updated_at = ? WHERE id = 1",
+		passwordHash,
+		now.UTC().Format(time.RFC3339),
+	)
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}

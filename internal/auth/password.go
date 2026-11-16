@@ -20,6 +20,29 @@ const (
 	phcAlgorithm        = "argon2id"
 )
 
+var weakPasswords = map[string]struct{}{
+	"123456789012": {},
+	"password1234": {},
+	"adminadmin12": {},
+	"qwertyuiop12": {},
+	"letmein12345": {},
+	"tacktacktack": {},
+}
+
+// ValidatePassword enforces the project's length and weak-password policy.
+func ValidatePassword(password string) error {
+	if len([]rune(password)) < 12 {
+		return fmt.Errorf("password must be at least 12 characters")
+	}
+	if len([]rune(password)) > 1024 {
+		return fmt.Errorf("password must be at most 1024 characters")
+	}
+	if _, weak := weakPasswords[strings.ToLower(strings.TrimSpace(password))]; weak {
+		return fmt.Errorf("password is too common")
+	}
+	return nil
+}
+
 // HashPassword produces an Argon2id PHC string using the project parameters.
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, argonSaltLen)

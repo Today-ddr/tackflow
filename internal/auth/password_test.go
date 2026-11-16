@@ -58,3 +58,20 @@ func TestVerifyPasswordRejectsMalformedHash(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePassword(t *testing.T) {
+	t.Parallel()
+
+	if err := ValidatePassword(testPassword); err != nil {
+		t.Fatalf("valid password rejected: %v", err)
+	}
+	if err := ValidatePassword("short"); err == nil {
+		t.Fatal("short password accepted")
+	}
+	if err := ValidatePassword("password1234"); err == nil {
+		t.Fatal("common password accepted")
+	}
+	if err := ValidatePassword(strings.Repeat("x", 1025)); err == nil {
+		t.Fatal("long password accepted")
+	}
+}
