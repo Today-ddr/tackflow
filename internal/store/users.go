@@ -62,3 +62,19 @@ func (s *Store) UserByUsername(ctx context.Context, username string) (User, erro
 	}
 	return user, nil
 }
+
+func (s *Store) UserByID(ctx context.Context, id int64) (User, error) {
+	var user User
+	err := s.db.QueryRowContext(
+		ctx,
+		"SELECT id, username, password_hash FROM user WHERE id = ?",
+		id,
+	).Scan(&user.ID, &user.Username, &user.PasswordHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return User{}, ErrNotFound
+	}
+	if err != nil {
+		return User{}, err
+	}
+	return user, nil
+}
