@@ -20,6 +20,7 @@ import (
 	"github.com/today/tack/internal/auth"
 	"github.com/today/tack/internal/config"
 	"github.com/today/tack/internal/store"
+	"github.com/today/tack/internal/update"
 )
 
 const requestIDKey contextKey = "request_id"
@@ -33,13 +34,16 @@ type BuildInfo struct {
 }
 
 type Server struct {
-	cfg     config.Config
-	store   *store.Store
-	assets  fs.FS
-	build   BuildInfo
-	logger  *slog.Logger
-	now     func() time.Time
-	limiter *loginLimiter
+	cfg       config.Config
+	store     *store.Store
+	assets    fs.FS
+	build     BuildInfo
+	logger    *slog.Logger
+	now       func() time.Time
+	limiter   *loginLimiter
+	changelog string
+	updateSvc *update.Service
+	updater   *update.UpdaterClient
 }
 
 func NewServer(
@@ -55,6 +59,12 @@ func NewServer(
 	}
 	if now == nil {
 		now = time.Now
+	}
+	if cfg.Timezone == nil {
+		cfg.Timezone = time.Local
+	}
+	if cfg.TimezoneName == "" {
+		cfg.TimezoneName = cfg.Timezone.String()
 	}
 	return &Server{
 		cfg:     cfg,
@@ -76,9 +86,47 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("GET /readyz", s.handleReady)
 	mux.HandleFunc("GET /api/v1/version", s.handleVersion)
+	mux.HandleFunc("GET /api/v1/changelog", s.handleChangelog)
 	mux.HandleFunc("POST /api/v1/auth/login", s.handleLogin)
 	mux.Handle("GET /api/v1/auth/me", s.requireAuth(http.HandlerFunc(s.handleMe)))
 	mux.Handle("POST /api/v1/auth/logout", s.requireAuth(http.HandlerFunc(s.handleLogout)))
+	mux.Handle("POST /api/v1/auth/sudo", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleSudo))))
+	mux.Handle("POST /api/v1/auth/password", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handlePassword))))
+
+	mux.Handle("GET /api/v1/tasks", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleListTasks))))
+	mux.Handle("POST /api/v1/tasks", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleCreateTask)))))
+	mux.Handle("GET /api/v1/tasks/{id}", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleGetTask))))
+	mux.Handle("PATCH /api/v1/tasks/{id}", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handlePatchTask)))))
+	mux.Handle("DELETE /api/v1/tasks/{id}", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleDeleteTask)))))
+	mux.Handle("POST /api/v1/tasks/{id}/move", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleMoveTask)))))
+	mux.Handle("POST /api/v1/tasks/{id}/comments", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleCommentTask)))))
+	mux.Handle("GET /api/v1/tasks/{id}/events", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleTaskEvents))))
+	mux.Handle("POST /api/v1/capture", s.requireAuth(s.requireScope(auth.ScopeCapture, s.withIdempotency(http.HandlerFunc(s.handleCapture)))))
+
+	mux.Handle("GET /api/v1/projects", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleListProjects))))
+	mux.Handle("POST /api/v1/projects", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleCreateProject)))))
+	mux.Handle("PATCH /api/v1/projects/{id}", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handlePatchProject)))))
+	mux.Handle("DELETE /api/v1/projects/{id}", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleDeleteProject)))))
+
+	mux.Handle("GET /api/v1/tags", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleListTags))))
+	mux.Handle("POST /api/v1/tags", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleCreateTag)))))
+	mux.Handle("DELETE /api/v1/tags/{id}", s.requireAuth(s.requireScope(auth.ScopeWrite, s.withIdempotency(http.HandlerFunc(s.handleDeleteTag)))))
+
+	mux.Handle("GET /api/v1/tokens", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleListTokens))))
+	mux.Handle("POST /api/v1/tokens", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleCreateToken)))))
+	mux.Handle("DELETE /api/v1/tokens/{id}", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleRevokeToken)))))
+
+	mux.Handle("GET /api/v1/sessions", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleListSessions))))
+	mux.Handle("DELETE /api/v1/sessions/{id}", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleDeleteSession))))
+
+	mux.Handle("GET /api/v1/settings", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleGetSettings))))
+	mux.Handle("PATCH /api/v1/settings", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handlePatchSettings)))))
+	mux.Handle("GET /api/v1/update/status", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleUpdateStatus))))
+	mux.Handle("POST /api/v1/update/check", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateCheck)))))
+	mux.Handle("POST /api/v1/update/apply", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateApply)))))
+	mux.Handle("POST /api/v1/update/rollback", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateRollback)))))
+	mux.Handle("GET /api/v1/export", s.requireAuth(s.requireScope(auth.ScopeRead, http.HandlerFunc(s.handleExport))))
+
 	mux.HandleFunc("/", s.handleStatic)
 	return mux
 }
@@ -106,14 +154,40 @@ func (s *Server) handleVersion(w http.ResponseWriter, _ *http.Request) {
 }
 
 type authContext struct {
-	User    store.User
-	Session store.Session
+	User     store.User
+	Session  *store.Session
+	APIToken *store.APIToken
 }
 
 type authContextKey struct{}
 
 func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if header := strings.TrimSpace(r.Header.Get("Authorization")); header != "" {
+			rawToken, ok := auth.BearerToken(header)
+			if !ok {
+				s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "API 令牌无效")
+				return
+			}
+			apiToken, err := s.store.APITokenByHash(r.Context(), auth.HashAPIToken(rawToken))
+			if err != nil {
+				s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "API 令牌无效")
+				return
+			}
+			user, err := s.store.UserByID(r.Context(), 1)
+			if err != nil {
+				s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "用户不存在")
+				return
+			}
+			_ = s.store.TouchAPIToken(r.Context(), apiToken.ID, s.now().UTC())
+			ctx := context.WithValue(r.Context(), authContextKey{}, authContext{
+				User:     user,
+				APIToken: &apiToken,
+			})
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
 		cookie, err := r.Cookie(auth.CookieName(s.cfg.CookieSecure))
 		if err != nil {
 			s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "请先登录")
@@ -142,22 +216,37 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), authContextKey{}, authContext{User: user, Session: session})
+		principal := authContext{User: user, Session: &session}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			if !s.requireCSRF(w, r) {
+				return
+			}
+		}
+		ctx := context.WithValue(r.Context(), authContextKey{}, principal)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
-	authValue, ok := r.Context().Value(authContextKey{}).(authContext)
+	authValue, ok := s.principal(r)
 	if !ok {
 		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "请先登录")
 		return
+	}
+	var sudoExpiresAt *time.Time
+	authKind := "token"
+	if authValue.Session != nil {
+		authKind = "session"
+		if authValue.Session.SudoUntil != nil && authValue.Session.SudoUntil.After(s.now().UTC()) {
+			sudoExpiresAt = authValue.Session.SudoUntil
+		}
 	}
 	s.writeJSON(w, http.StatusOK, map[string]any{
 		"user": map[string]string{
 			"username": authValue.User.Username,
 		},
-		"sudo_expires_at": nil,
+		"auth_kind":       authKind,
+		"sudo_expires_at": sudoExpiresAt,
 	})
 }
 
@@ -227,12 +316,13 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if !s.requireCSRF(w, r) {
-		return
-	}
-	authValue, ok := r.Context().Value(authContextKey{}).(authContext)
+	authValue, ok := s.principal(r)
 	if !ok {
 		s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "请先登录")
+		return
+	}
+	if authValue.Session == nil {
+		s.writeError(w, r, http.StatusForbidden, "web_only", "该操作只能在网页中使用")
 		return
 	}
 	if err := s.store.DeleteSession(r.Context(), authValue.Session.ID); err != nil {
@@ -249,6 +339,65 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 	})
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleChangelog(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(s.changelog))
+}
+
+func (s *Server) SetChangelog(changelog string) {
+	s.changelog = changelog
+}
+
+func (s *Server) SetUpdateService(service *update.Service, client *update.UpdaterClient) {
+	s.updateSvc = service
+	s.updater = client
+}
+
+func (s *Server) principal(r *http.Request) (authContext, bool) {
+	value, ok := r.Context().Value(authContextKey{}).(authContext)
+	return value, ok
+}
+
+func (s *Server) requireWeb(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authValue, ok := s.principal(r)
+		if !ok || authValue.Session == nil {
+			s.writeError(w, r, http.StatusForbidden, "web_only", "该操作只能在网页中使用")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) requireScope(required string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authValue, ok := s.principal(r)
+		if !ok {
+			s.writeError(w, r, http.StatusUnauthorized, "unauthorized", "请先登录")
+			return
+		}
+		if authValue.APIToken != nil && !auth.HasScope(authValue.APIToken.Scopes, required) {
+			s.writeError(w, r, http.StatusForbidden, "insufficient_scope", "API 令牌权限不足")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) requireSudo(w http.ResponseWriter, r *http.Request) bool {
+	authValue, ok := s.principal(r)
+	if !ok || authValue.Session == nil {
+		s.writeError(w, r, http.StatusForbidden, "web_only", "该操作只能在网页中使用")
+		return false
+	}
+	if authValue.Session.SudoUntil == nil || !authValue.Session.SudoUntil.After(s.now().UTC()) {
+		s.writeError(w, r, http.StatusForbidden, "sudo_required", "请重新输入密码")
+		return false
+	}
+	return true
 }
 
 func (s *Server) requireCSRF(w http.ResponseWriter, r *http.Request) bool {
@@ -294,7 +443,12 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, r, http.StatusNotFound, "not_found", "资源不存在")
 		return
 	}
-	if contentType := mime.TypeByExtension(path.Ext(assetPath)); contentType != "" {
+	extension := path.Ext(assetPath)
+	contentType := mime.TypeByExtension(extension)
+	if extension == ".webmanifest" {
+		contentType = "application/manifest+json"
+	}
+	if contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
 	http.ServeContent(w, r, assetPath, time.Time{}, bytes.NewReader(data))

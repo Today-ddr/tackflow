@@ -20,6 +20,13 @@ type Config struct {
 	SessionSecret []byte
 	CookieSecure  bool
 	SessionTTL    time.Duration
+	Timezone      *time.Location
+	TimezoneName  string
+	GitHubRepo    string
+	GitHubToken   string
+	UpdaterURL    string
+	UpdaterToken  string
+	ImageTag      string
 }
 
 // Load reads configuration from environment values without mutating the process.
@@ -46,6 +53,12 @@ func Load(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("TACK_SESSION_SECRET must decode to exactly 32 bytes")
 	}
 
+	timezoneName := valueOrDefault(getenv("TACK_TZ"), "Asia/Shanghai")
+	timezone, err := time.LoadLocation(timezoneName)
+	if err != nil {
+		return Config{}, fmt.Errorf("TACK_TZ is invalid: %w", err)
+	}
+
 	cfg := Config{
 		Addr:          valueOrDefault(getenv("TACK_ADDR"), ":8080"),
 		PublicURL:     strings.TrimRight(publicURL, "/"),
@@ -55,6 +68,13 @@ func Load(getenv func(string) string) (Config, error) {
 		SessionSecret: sessionSecret,
 		CookieSecure:  parsedURL.Scheme == "https",
 		SessionTTL:    defaultSessionTTL,
+		Timezone:      timezone,
+		TimezoneName:  timezoneName,
+		GitHubRepo:    strings.TrimSpace(getenv("TACK_GITHUB_REPO")),
+		GitHubToken:   strings.TrimSpace(getenv("TACK_GITHUB_TOKEN")),
+		UpdaterURL:    strings.TrimRight(strings.TrimSpace(getenv("TACK_UPDATER_URL")), "/"),
+		UpdaterToken:  strings.TrimSpace(getenv("TACK_UPDATER_TOKEN")),
+		ImageTag:      strings.TrimSpace(getenv("TACK_IMAGE_TAG")),
 	}
 	return cfg, nil
 }

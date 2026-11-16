@@ -38,6 +38,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.SessionTTL != 30*24*time.Hour {
 		t.Errorf("SessionTTL = %v, want %v", cfg.SessionTTL, 30*24*time.Hour)
 	}
+	if cfg.TimezoneName != "Asia/Shanghai" {
+		t.Errorf("TimezoneName = %q, want Asia/Shanghai", cfg.TimezoneName)
+	}
 }
 
 func TestLoadRequiresPublicURL(t *testing.T) {
