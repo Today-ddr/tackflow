@@ -1,0 +1,365 @@
+@import "tailwindcss";
+
+:root {
+  font-family:
+    "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --paper: #faf7f2;
+  --surface: #ffffff;
+  --ink: #201b16;
+  --muted: #8a8178;
+  --line: #e7dfd3;
+  --accent: #b2532c;
+  --accent-soft: #f3e4da;
+  --sage: #6f7d5b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+::selection {
+  color: var(--surface);
+  background: var(--accent);
+}
+
+.eyebrow {
+  margin: 0 0 0.6rem;
+  color: var(--accent);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.login-page,
+.loading-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 2rem 1.25rem;
+  background: var(--paper);
+}
+
+.login-card {
+  width: min(100%, 29rem);
+  padding: clamp(2rem, 6vw, 3.75rem);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.login-intro h1 {
+  margin: 0;
+  color: var(--ink);
+  font-family:
+    "Instrument Serif", "Songti SC", "STSong", Georgia, serif;
+  font-size: clamp(4rem, 14vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+  line-height: 0.8;
+}
+
+.login-tagline {
+  margin: 1.8rem 0 2rem;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.75;
+}
+
+.login-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field label {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.form-error {
+  margin: -0.1rem 0 0;
+  color: var(--accent);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.login-note {
+  margin: 2.5rem 0 0;
+  color: var(--muted);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+}
+
+.loading-page {
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.loading-page button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.app-frame {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--paper);
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+  padding: 2rem 1.15rem 1.2rem;
+  border-right: 1px solid var(--line);
+}
+
+.wordmark {
+  color: var(--ink);
+  font-family:
+    "Instrument Serif", "Songti SC", "STSong", Georgia, serif;
+  font-size: 2.6rem;
+  letter-spacing: -0.06em;
+  line-height: 0.8;
+}
+
+.sidebar-kicker {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.65rem 0.7rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: left;
+}
+
+.nav-item:hover:not(:disabled),
+.nav-item-active {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.nav-item:disabled {
+  opacity: 0.45;
+}
+
+.count {
+  color: var(--muted);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.68rem;
+}
+
+.sidebar-section {
+  margin-top: auto;
+}
+
+.sidebar-label {
+  margin: 0 0 0.7rem;
+  color: var(--muted);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sidebar-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.user-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace {
+  min-width: 0;
+  padding: clamp(1.5rem, 4vw, 3.6rem);
+}
+
+.workspace-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding-bottom: 2.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.workspace-header h1 {
+  margin: 0;
+  color: var(--ink);
+  font-family:
+    "Instrument Serif", "Songti SC", "STSong", Georgia, serif;
+  font-size: clamp(2.3rem, 5vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.shortcut {
+  margin-left: 0.25rem;
+  color: var(--muted);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.64rem;
+}
+
+.board {
+  max-width: 62rem;
+  margin: 2rem auto 0;
+}
+
+.column {
+  width: min(100%, 20rem);
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 58%, var(--paper));
+}
+
+.column-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.2rem 0.25rem 0.8rem;
+}
+
+.column-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.empty-state {
+  display: grid;
+  gap: 0.5rem;
+  min-height: 9rem;
+  align-content: center;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  padding: 1rem;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--ink);
+  font-family:
+    "Instrument Serif", "Songti SC", "STSong", Georgia, serif;
+  font-size: 1.55rem;
+}
+
+.empty-state span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .app-frame {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    gap: 1.2rem;
+    padding: 1.25rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sidebar-section {
+    display: none;
+  }
+
+  .workspace {
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .workspace-header {
+    align-items: flex-end;
+    padding-bottom: 1.4rem;
+  }
+
+  .workspace-header > button {
+    padding: 0;
+  }
+
+  .shortcut {
+    display: none;
+  }
+}

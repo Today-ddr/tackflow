@@ -15,6 +15,7 @@ deploy/.env
 web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
+*.tsbuildinfo
 
 # Build and test output
 bin/
