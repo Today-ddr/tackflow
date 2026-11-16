@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/today/tack/migrations"
 )
 
 func TestOpenMigrateAndBootstrapAdmin(t *testing.T) {
@@ -31,8 +33,8 @@ func TestOpenMigrateAndBootstrapAdmin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SchemaVersion() error = %v", err)
 	}
-	if version != 1 {
-		t.Errorf("SchemaVersion() = %d, want 1", version)
+	if version != 2 {
+		t.Errorf("SchemaVersion() = %d, want 2", version)
 	}
 
 	var journalMode string
@@ -85,6 +87,58 @@ func TestOpenMigrateAndBootstrapAdmin(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dataDir, "tack.db")); err != nil {
 		t.Errorf("tack.db not created: %v", err)
+	}
+}
+
+func TestMigrateUpgradesV1Database(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	st, err := Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	if _, err := st.db.ExecContext(ctx, `
+		CREATE TABLE schema_migrations (
+			version INTEGER PRIMARY KEY,
+			applied_at TEXT NOT NULL
+		)
+	`); err != nil {
+		t.Fatalf("create schema_migrations: %v", err)
+	}
+	body, err := migrations.FS.ReadFile("0001_init.sql")
+	if err != nil {
+		t.Fatalf("read migration: %v", err)
+	}
+	if err := st.applyMigration(ctx, 1, string(body)); err != nil {
+		t.Fatalf("apply v1 migration: %v", err)
+	}
+
+	now := time.Date(2026, 11, 16, 9, 0, 0, 0, time.UTC)
+	if _, err := st.BootstrapAdmin(ctx, "admin", "hash", now); err != nil {
+		t.Fatalf("BootstrapAdmin() error = %v", err)
+	}
+	if err := st.CreateSession(ctx, "existing", 1, now, now.Add(time.Hour), "", ""); err != nil {
+		t.Fatalf("CreateSession() error = %v", err)
+	}
+
+	if err := st.Migrate(ctx); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+	version, err := st.SchemaVersion(ctx)
+	if err != nil {
+		t.Fatalf("SchemaVersion() error = %v", err)
+	}
+	if version != 2 {
+		t.Fatalf("SchemaVersion() = %d, want 2", version)
+	}
+	if _, err := st.SessionByID(ctx, "existing", now); err != nil {
+		t.Fatalf("existing session lost after migration: %v", err)
+	}
+	if err := st.SetSessionSudo(ctx, "existing", now.Add(5*time.Minute)); err != nil {
+		t.Fatalf("SetSessionSudo() after migration: %v", err)
 	}
 }
 
