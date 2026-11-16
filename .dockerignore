@@ -1,10 +1,13 @@
 .git
 .superpowers
 .golangci.yml
+bin
+coverage
 data
 deploy/.env
 deploy/data
 web/node_modules
 web/dist
+web/*.tsbuildinfo
 *.log
 *.out
