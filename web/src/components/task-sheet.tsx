@@ -142,7 +142,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
       open
       onClose={onClose}
       title={task?.title ?? "任务详情"}
-      subtitle={task ? `${statusLabel(task.status)} · #${task.id}` : "正在读取…"}
+      subtitle={task ? `${statusLabel(task.status)} · 任务 #${task.id}` : "正在读取…"}
       className="task-sheet"
       footer={
         <div className="dialog-actions sheet-actions">
@@ -168,7 +168,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending || !title.trim()}
             >
-              {saveMutation.isPending ? "保存中…" : "保存修改"}
+              {saveMutation.isPending ? "保存中…" : "保存"}
             </Button>
           </div>
         </div>
@@ -314,7 +314,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
               </div>
               <div className="comment-list">
                 {comments.length === 0 ? (
-                  <p className="muted-copy">还没有评论。</p>
+                  <p className="muted-copy">暂无评论。</p>
                 ) : (
                   comments.map((event) => {
                     const text =

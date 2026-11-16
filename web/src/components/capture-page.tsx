@@ -49,15 +49,14 @@ export function CapturePage({ onBack }: CapturePageProps) {
       <header className="capture-header">
         <button className="back-button" type="button" onClick={onBack}>
           <ArrowLeft size={18} aria-hidden />
-          返回看板
+          看板
         </button>
         <span className="capture-wordmark">Tack</span>
-        <span className="capture-mode">收件箱 · 自动保存</span>
+        <span className="capture-mode">收件箱</span>
       </header>
 
       <section className="capture-card" aria-labelledby="capture-title">
-        <p className="eyebrow">记一笔</p>
-        <h1 id="capture-title">把念头钉住。</h1>
+        <h1 id="capture-title">记一笔</h1>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -103,7 +102,7 @@ export function CapturePage({ onBack }: CapturePageProps) {
           <div className="capture-actions">
             <span className="capture-hint">
               <CornerDownLeft size={14} aria-hidden />
-              <kbd>⌘ ↵</kbd> 提交 · 提交后留在这一页
+              <kbd>⌘ ↵</kbd> 提交后留在这一页
             </span>
             <button className="primary-button capture-submit" type="submit" disabled={!text.trim() || mutation.isPending}>
               <Rocket size={16} aria-hidden />
@@ -114,10 +113,10 @@ export function CapturePage({ onBack }: CapturePageProps) {
       </section>
 
       <footer className="capture-footer">
-        <span># 标签会保留</span>
+        <span># 标签</span>
         <span>@ 项目必须已存在</span>
         <span>!p0–p3 优先级</span>
-        <span>^今天 / ^明天 / ^2026-11-20</span>
+        <span>^今天 / ^明天 / ^日期</span>
       </footer>
     </main>
   );

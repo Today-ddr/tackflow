@@ -110,6 +110,8 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
     return "";
   }, [filter]);
 
+  const mobileTitle = isSettings ? "设置" : filterLabel || "看板";
+
   if (isCapture) {
     return <CapturePage onBack={() => navigate("/")} />;
   }
@@ -121,7 +123,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
           <button className="wordmark" type="button" onClick={() => navigate("/")}>
             Tack
           </button>
-          <p className="sidebar-kicker">把念头钉住</p>
+          <p className="sidebar-kicker">任务看板</p>
         </div>
 
         <button className="quick-capture" type="button" onClick={() => navigate("/capture")}>
@@ -261,9 +263,12 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
 
       <main className="workspace">
         <header className="mobile-topbar">
-          <button className="wordmark" type="button" onClick={() => navigate("/")}>
-            Tack
-          </button>
+          <div className="mobile-topbar-title">
+            <button className="wordmark" type="button" onClick={() => navigate("/")}>
+              Tack
+            </button>
+            <span>{mobileTitle}</span>
+          </div>
           <div className="mobile-topbar-actions">
             <button className="icon-button" type="button" onClick={() => setPaletteOpen(true)} aria-label="搜索">
               <Search size={18} />
@@ -295,7 +300,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
           </div>
         ) : tasksQuery.isPending || projectsQuery.isPending || tagsQuery.isPending ? (
           <div className="page-state">
-            <p>正在铺开纸张…</p>
+            <p>正在载入任务…</p>
           </div>
         ) : (
           <Board

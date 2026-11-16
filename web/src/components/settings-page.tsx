@@ -64,9 +64,8 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
     <section className="settings-page">
       <header className="settings-header">
         <div>
-          <p className="eyebrow">系统与账户</p>
           <h1>设置</h1>
-          <p>只属于你的 Tack。数据、令牌和更新都从这里掌握。</p>
+          <p>数据、令牌与更新都在这里。</p>
         </div>
         <div className="settings-identity">
           <span className="avatar">{me.user.username.slice(0, 1).toUpperCase()}</span>
@@ -167,13 +166,10 @@ function GeneralSettings({
     <div className="settings-grid">
       <section className="settings-card">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">外观</p>
-            <h2>纸张与墨色</h2>
-          </div>
+          <h2>主题</h2>
           <span className="settings-card-mark">Aa</span>
         </div>
-        <p className="settings-copy">主题会保存在这台设备，不跟随服务器。</p>
+        <p className="settings-copy">保存在这台设备，不跟随服务器。</p>
         <div className="segmented-control">
           {(["light", "dark", "system"] as Theme[]).map((value) => (
             <button
@@ -185,7 +181,7 @@ function GeneralSettings({
                 setThemeState(value);
               }}
             >
-              {value === "light" ? "纸张" : value === "dark" ? "夜墨" : "跟随系统"}
+              {value === "light" ? "浅色" : value === "dark" ? "深色" : "跟随系统"}
             </button>
           ))}
         </div>
@@ -193,13 +189,10 @@ function GeneralSettings({
 
       <section className="settings-card">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">更新检查</p>
-            <h2>多久看一次新版</h2>
-          </div>
+          <h2>更新检查</h2>
           <RefreshCw size={18} aria-hidden />
         </div>
-        <p className="settings-copy">检查本身不会重启服务，只有你点「立即更新」才会。</p>
+        <p className="settings-copy">只有点「立即更新」才会重启服务。</p>
         <select
           className="settings-select"
           value={settings?.update_interval_hours ?? 24}
@@ -218,15 +211,10 @@ function GeneralSettings({
 
       <section className="settings-card settings-card-wide">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">会话</p>
-            <h2>这是一台单用户服务器</h2>
-          </div>
+          <h2>当前会话</h2>
           <Laptop size={18} aria-hidden />
         </div>
-        <p className="settings-copy">
-          手机和桌面共用同一份任务。需要退出时，直接结束当前网页会话。
-        </p>
+        <p className="settings-copy">手机和桌面共用同一份任务。</p>
         <Button variant="quiet" type="button" onClick={onLogout}>
           <LogOut size={15} aria-hidden />
           退出当前会话
@@ -280,10 +268,7 @@ function AccountSettings({
     <div className="settings-grid">
       <section className="settings-card">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">账户</p>
-            <h2>改密码</h2>
-          </div>
+          <h2>改密码</h2>
           <KeyRound size={18} aria-hidden />
         </div>
         <p className="settings-copy">至少 12 位；修改后会退出所有设备。</p>
@@ -322,10 +307,7 @@ function AccountSettings({
 
       <section className="settings-card settings-card-wide">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">设备</p>
-            <h2>登录中的会话</h2>
-          </div>
+          <h2>登录设备</h2>
           <Laptop size={18} aria-hidden />
         </div>
         <div className="session-list">
@@ -419,14 +401,11 @@ function TokenSettings({
     <div className="settings-grid">
       <section className="settings-card settings-card-wide">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">脚本与快捷指令</p>
-            <h2>API 令牌</h2>
-          </div>
+          <h2>API 令牌</h2>
           <KeyRound size={18} aria-hidden />
         </div>
         <p className="settings-copy">
-          手机快捷指令、日报脚本和 agent 用 Bearer 令牌访问。明文只在创建时出现一次。
+          给快捷指令、脚本和 agent 的 Bearer 令牌。明文只显示一次。
         </p>
         <div className="token-create">
           <div className="form-row">
@@ -594,10 +573,7 @@ function UpdateSettings({
     <div className="settings-grid">
       <section className="settings-card settings-card-wide">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">发布链路</p>
-            <h2>版本与更新</h2>
-          </div>
+          <h2>版本与更新</h2>
           <UploadCloud size={18} aria-hidden />
         </div>
         <div className="version-row">
@@ -661,7 +637,7 @@ function UpdateSettings({
         </div>
         {update?.release_body ? (
           <div className="release-notes">
-            <p className="eyebrow">这个版本改了什么</p>
+            <p className="settings-copy">更新说明</p>
             <pre>{update.release_body}</pre>
           </div>
         ) : null}
@@ -705,10 +681,7 @@ function DataSettings({
     <div className="settings-grid">
       <section className="settings-card settings-card-wide">
         <div className="settings-card-heading">
-          <div>
-            <p className="eyebrow">可带走的数据</p>
-            <h2>导出与备份</h2>
-          </div>
+          <h2>导出与备份</h2>
           <Download size={18} aria-hidden />
         </div>
         <p className="settings-copy">

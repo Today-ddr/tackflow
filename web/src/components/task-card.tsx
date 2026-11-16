@@ -83,7 +83,7 @@ export function TaskCardBody({ task }: { task: Task }) {
             {formatDate(task.due_at)}
           </span>
         ) : (
-          <span />
+          <span className="task-card-id">#{task.id}</span>
         )}
         {task.agent_ready ? (
           <span className="agent-badge" title="Agent 可领取">

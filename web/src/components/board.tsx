@@ -181,7 +181,6 @@ export function Board({
     <section className="board-page" aria-label="任务看板">
       <header className="board-header">
         <div>
-          <p className="eyebrow">任务看板</p>
           <div className="board-title-line">
             <h1>{titleForFilter(filter)}</h1>
             {filter.kind === "project" || filter.kind === "tag" ? (
@@ -191,7 +190,7 @@ export function Board({
             ) : null}
           </div>
           <p className="board-summary">
-            {visibleTasks.length} 件事 · 拖一张卡，换一个位置
+            {visibleTasks.length} 件事
           </p>
         </div>
         <div className="board-actions">
@@ -294,8 +293,12 @@ function BoardColumn({
               <TaskCard key={task.id} task={task} onOpen={onOpenTask} />
             ))}
             {tasks.length === 0 ? (
-              <div className="column-empty">
-                {status === "inbox" ? "先把念头丢进来。" : "拖到这里。"}
+              <div className={`column-empty ${isOver ? "column-empty-over" : ""}`}>
+                {isOver
+                  ? "松手放到这里"
+                  : status === "inbox"
+                    ? "收件箱是空的"
+                    : "还没有任务"}
               </div>
             ) : null}
             <InlineComposer status={status} />

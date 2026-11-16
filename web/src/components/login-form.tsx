@@ -36,9 +36,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           <p className="eyebrow">个人任务看板</p>
           <h1 id="login-title">Tack</h1>
           <p className="login-tagline">
-            把飘着的念头钉住。
-            <br />
-            收件箱在等第一张卡。
+            把念头钉住。写下，归档，继续。
           </p>
         </div>
 
