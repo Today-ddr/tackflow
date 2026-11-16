@@ -1,0 +1,40 @@
+name: ${COMPOSE_PROJECT_NAME:-tack}
+
+services:
+  app:
+    image: ghcr.io/${TACK_GHCR_OWNER:?set TACK_GHCR_OWNER}/tack:${TACK_IMAGE_TAG:?set TACK_IMAGE_TAG}
+    user: "${TACK_UID:-501}:${TACK_GID:-20}"
+    env_file: .env
+    volumes:
+      - ./data:/data
+    networks:
+      - web
+      - control
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/tack", "healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    environment:
+      TACK_SITE_ADDRESS: ${TACK_SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    networks:
+      - web
+    restart: unless-stopped
+
+networks:
+  web:
+  control:
+    internal: true
+
+volumes:
+  caddy_data:

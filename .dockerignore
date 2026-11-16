@@ -1,0 +1,10 @@
+.git
+.superpowers
+.golangci.yml
+data
+deploy/.env
+deploy/data
+web/node_modules
+web/dist
+*.log
+*.out

@@ -31,7 +31,7 @@ func TestHealthAndVersionEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /healthz: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("healthz status = %d, want 200", resp.StatusCode)
 	}
@@ -43,7 +43,7 @@ func TestHealthAndVersionEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /readyz: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("readyz status = %d, want 200", resp.StatusCode)
 	}
@@ -52,7 +52,7 @@ func TestHealthAndVersionEndpoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /api/v1/version: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var version struct {
 		Version string `json:"version"`
 	}
@@ -75,10 +75,10 @@ func TestLoginMeAndLogout(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("login status = %d, want 200", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp = request(t, client, http.MethodGet, ts.URL+"/api/v1/auth/me", "", nil)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("me status = %d, want 200", resp.StatusCode)
 	}
@@ -98,18 +98,18 @@ func TestLoginMeAndLogout(t *testing.T) {
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("logout without client header status = %d, want 403", resp.StatusCode)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	resp = request(t, client, http.MethodPost, ts.URL+"/api/v1/auth/logout", "", map[string]string{
 		"X-Tack-Client": "web",
 	})
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("logout status = %d, want 204", resp.StatusCode)
 	}
 
 	resp = request(t, client, http.MethodGet, ts.URL+"/api/v1/auth/me", "", nil)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("me after logout status = %d, want 401", resp.StatusCode)
 	}
@@ -127,11 +127,11 @@ func TestLoginRejectsWrongPasswordAndRateLimits(t *testing.T) {
 		if resp.StatusCode != http.StatusUnauthorized {
 			t.Fatalf("attempt %d status = %d, want 401", attempt, resp.StatusCode)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	resp := login(t, client, ts.URL, testPassword, "")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusTooManyRequests {
 		t.Fatalf("sixth attempt status = %d, want 429", resp.StatusCode)
 	}
@@ -144,7 +144,7 @@ func TestCookieMutationRejectsForeignOrigin(t *testing.T) {
 	defer ts.Close()
 	client := newClient(t)
 	resp := login(t, client, ts.URL, testPassword, "")
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("login status = %d, want 200", resp.StatusCode)
 	}
@@ -153,7 +153,7 @@ func TestCookieMutationRejectsForeignOrigin(t *testing.T) {
 		"X-Tack-Client": "web",
 		"Origin":        "https://evil.example",
 	})
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("foreign origin status = %d, want 403", resp.StatusCode)
 	}
@@ -265,7 +265,7 @@ func TestSessionCookieUsesLocalName(t *testing.T) {
 	defer ts.Close()
 	client := newClient(t)
 	resp := login(t, client, ts.URL, testPassword, "")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	cookies := resp.Cookies()
 	if len(cookies) == 0 {
@@ -289,7 +289,7 @@ func TestPublicURLOriginIsAccepted(t *testing.T) {
 	defer ts.Close()
 	client := newClient(t)
 	resp := login(t, client, ts.URL, testPassword, "")
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("login status = %d", resp.StatusCode)
 	}
@@ -298,7 +298,7 @@ func TestPublicURLOriginIsAccepted(t *testing.T) {
 		"X-Tack-Client": "web",
 		"Origin":        "http://localhost:8080",
 	})
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("same origin status = %d, want 204", resp.StatusCode)
 	}

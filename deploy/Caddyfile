@@ -1,0 +1,4 @@
+{$TACK_SITE_ADDRESS:localhost} {
+	encode zstd gzip
+	reverse_proxy app:8080
+}

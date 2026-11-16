@@ -35,7 +35,7 @@ func main() {
 func run(args []string, getenv func(string) string, stdout io.Writer) int {
 	if len(args) == 0 {
 		if err := serve(getenv, stdout); err != nil {
-			fmt.Fprintln(stdout, "error:", err)
+			_, _ = fmt.Fprintln(stdout, "error:", err)
 			return 1
 		}
 		return 0
@@ -44,24 +44,24 @@ func run(args []string, getenv func(string) string, stdout io.Writer) int {
 	switch args[0] {
 	case "healthcheck":
 		if err := healthcheck(getenv); err != nil {
-			fmt.Fprintln(stdout, "healthcheck failed:", err)
+			_, _ = fmt.Fprintln(stdout, "healthcheck failed:", err)
 			return 1
 		}
 		return 0
 	case "migrate":
 		if err := migrate(getenv); err != nil {
-			fmt.Fprintln(stdout, "migrate failed:", err)
+			_, _ = fmt.Fprintln(stdout, "migrate failed:", err)
 			return 1
 		}
 		return 0
 	case "backup":
 		if err := backup(getenv, stdout); err != nil {
-			fmt.Fprintln(stdout, "backup failed:", err)
+			_, _ = fmt.Fprintln(stdout, "backup failed:", err)
 			return 1
 		}
 		return 0
 	default:
-		fmt.Fprintln(stdout, "usage: tack [healthcheck|migrate|backup]")
+		_, _ = fmt.Fprintln(stdout, "usage: tack [healthcheck|migrate|backup]")
 		return 1
 	}
 }
@@ -183,7 +183,7 @@ func healthcheck(getenv func(string) string) error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("status %d", response.StatusCode)
 	}

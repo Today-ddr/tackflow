@@ -3,6 +3,7 @@
 
 # Runtime data and secrets
 data/
+deploy/data/
 deploy/.env
 .env
 .env.*
