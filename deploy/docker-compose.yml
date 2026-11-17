@@ -2,7 +2,7 @@ name: ${COMPOSE_PROJECT_NAME:-tack}
 
 services:
   app:
-    image: ghcr.io/${TACK_GHCR_OWNER:?set TACK_GHCR_OWNER}/tack:${TACK_IMAGE_TAG:?set TACK_IMAGE_TAG}
+    image: ghcr.io/${TACK_GHCR_OWNER:?set TACK_GHCR_OWNER}/tackflow:${TACK_IMAGE_TAG:?set TACK_IMAGE_TAG}
     user: "${TACK_UID:-501}:${TACK_GID:-20}"
     env_file: .env
     volumes:
@@ -18,7 +18,7 @@ services:
       retries: 3
 
   updater:
-    image: ghcr.io/${TACK_GHCR_OWNER:?set TACK_GHCR_OWNER}/tack-updater:${TACK_UPDATER_TAG:?set TACK_UPDATER_TAG}
+    image: ghcr.io/${TACK_GHCR_OWNER:?set TACK_GHCR_OWNER}/tackflow-updater:${TACK_UPDATER_TAG:?set TACK_UPDATER_TAG}
     user: "0:0"
     env_file: .env
     working_dir: /compose

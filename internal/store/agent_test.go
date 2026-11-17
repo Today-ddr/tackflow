@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/today/tack/migrations"
+	"github.com/today-ddr/tackflow/migrations"
 )
 
 func taskAReadyTask(t *testing.T, st *Store, now time.Time) Task {

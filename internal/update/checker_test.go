@@ -11,16 +11,16 @@ func TestCheckerLatest(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/repos/today/tack/releases/latest" {
+		if r.URL.Path != "/repos/Today-ddr/tackflow/releases/latest" {
 			t.Fatalf("path = %q", r.URL.Path)
 		}
 		w.Header().Set("ETag", `"abc"`)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"tag_name":"v0.2.0","body":"changes","html_url":"https://github.com/today/tack/releases/tag/v0.2.0","published_at":"2026-11-16T00:00:00Z"}`))
+		_, _ = w.Write([]byte(`{"tag_name":"v0.2.0","body":"changes","html_url":"https://github.com/Today-ddr/tackflow/releases/tag/v0.2.0","published_at":"2026-11-16T00:00:00Z"}`))
 	}))
 	defer server.Close()
 
-	checker := &Checker{Repo: "today/tack", BaseURL: server.URL, Client: server.Client()}
+	checker := &Checker{Repo: "Today-ddr/tackflow", BaseURL: server.URL, Client: server.Client()}
 	release, etag, notModified, err := checker.Latest(context.Background(), "")
 	if err != nil {
 		t.Fatalf("Latest: %v", err)
@@ -37,7 +37,7 @@ func TestCheckerNotModified(t *testing.T) {
 		w.WriteHeader(http.StatusNotModified)
 	}))
 	defer server.Close()
-	checker := &Checker{Repo: "today/tack", BaseURL: server.URL, Client: server.Client()}
+	checker := &Checker{Repo: "Today-ddr/tackflow", BaseURL: server.URL, Client: server.Client()}
 	_, _, notModified, err := checker.Latest(context.Background(), `"abc"`)
 	if err != nil {
 		t.Fatalf("Latest: %v", err)

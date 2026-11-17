@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/today/tack/internal/auth"
+	"github.com/today-ddr/tackflow/internal/auth"
 )
 
 func connectionFixture(t *testing.T) *taskAFixture {

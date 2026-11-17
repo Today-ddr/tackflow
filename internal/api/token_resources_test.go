@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/today/tack/internal/auth"
-	"github.com/today/tack/internal/config"
-	"github.com/today/tack/internal/store"
-	"github.com/today/tack/migrations"
+	"github.com/today-ddr/tackflow/internal/auth"
+	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/store"
+	"github.com/today-ddr/tackflow/migrations"
 )
 
 func resourceTestToken(t *testing.T, ts *httptest.Server, client *http.Client, projects, tags []int64) string {

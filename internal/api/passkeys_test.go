@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
-	"github.com/today/tack/internal/auth"
-	"github.com/today/tack/internal/config"
-	"github.com/today/tack/internal/store"
+	"github.com/today-ddr/tackflow/internal/auth"
+	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/store"
 )
 
 const passkeyTestOrigin = "https://tack.example"

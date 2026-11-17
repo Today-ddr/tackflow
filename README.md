@@ -2,6 +2,8 @@
 
 Tack（图钉）是一个单用户、单看板的自建任务收集器。手机 3 秒记一笔，桌面拖卡整理，脚本和 agent 通过 API 读写；数据只在自己的 SQLite 文件里。
 
+源码仓库：[Today-ddr/tackflow](https://github.com/Today-ddr/tackflow)。Go 模块为 `github.com/today-ddr/tackflow`，应用和命令名继续使用 Tack / `tack`。
+
 当前版本：**0.2.0（M1–M4 可用版）**。
 
 ## 能力

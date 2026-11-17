@@ -34,7 +34,7 @@ openssl rand -hex 32      # TACK_UPDATER_TOKEN
 
 ```dotenv
 COMPOSE_PROJECT_NAME=tack
-TACK_GHCR_OWNER=<github-owner>
+TACK_GHCR_OWNER=today-ddr
 TACK_IMAGE_TAG=v0.2.0
 TACK_UPDATER_TAG=v0.2.0
 TACK_SITE_ADDRESS=tack.example.com
@@ -42,7 +42,7 @@ TACK_PUBLIC_URL=https://tack.example.com
 TACK_ADMIN_USERNAME=admin
 TACK_ADMIN_PASSWORD=<首次启动密码，至少 12 位>
 TACK_SESSION_SECRET=<base64 32 字节>
-TACK_GITHUB_REPO=<github-owner>/tack
+TACK_GITHUB_REPO=Today-ddr/tackflow
 TACK_GITHUB_TOKEN=
 TACK_UPDATER_URL=http://updater:8081
 TACK_UPDATER_TOKEN=<与上面同一密钥>
@@ -72,6 +72,8 @@ chmod 700 data
 
 默认仓库和镜像 public，服务器无需登录即可 `pull`。
 
+源码仓库为 `Today-ddr/tackflow`；GHCR 镜像路径使用小写 `today-ddr/tackflow` 和 `today-ddr/tackflow-updater`，`TACK_GHCR_OWNER` 也需保持小写。
+
 如果仓库私有：
 
 ```bash
@@ -83,9 +85,9 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-user> --password-stdin
 ## 网页更新
 
 1. 在 GitHub 推送 tag 后，Release workflow 构建并推送：
-   - `ghcr.io/<owner>/tack:<tag>`
-   - `ghcr.io/<owner>/tack:sha-<short>`
-   - `ghcr.io/<owner>/tack-updater:<tag>`
+   - `ghcr.io/today-ddr/tackflow:<tag>`
+   - `ghcr.io/today-ddr/tackflow:sha-<short>`
+   - `ghcr.io/today-ddr/tackflow-updater:<tag>`
 2. app 定时请求 GitHub Releases，发现新版本后侧栏设置图标出现红点。
 3. 进入「设置 → 更新」，点击「立即更新」，输入当前密码确认 sudo。
 4. app 调 updater；updater 的流程是：

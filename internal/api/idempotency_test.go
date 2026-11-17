@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/today/tack/internal/config"
-	"github.com/today/tack/internal/store"
+	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/store"
 )
 
 func TestIdempotencyEncryptsSecretsAndRejectsTampering(t *testing.T) {

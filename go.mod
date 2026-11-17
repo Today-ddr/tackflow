@@ -1,4 +1,4 @@
-module github.com/today/tack
+module github.com/today-ddr/tackflow
 
 go 1.27.0
 

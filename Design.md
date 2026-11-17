@@ -2,7 +2,7 @@
 
 > 项目名：**Tack**（图钉）· 中文叫「图钉」
 > 状态：M1–M4 已实现 · v0.2.0 · 2026-11-16
-> 仓库：`github.com/<owner>/tack`（owner 待定）
+> 仓库：`github.com/Today-ddr/tackflow` · Go 模块：`github.com/today-ddr/tackflow`
 > 一句话：把念头钉在板上，让脚本和 agent 也能看见。
 
 ---
@@ -558,7 +558,7 @@ app 侧只暴露给已登录且处于 sudo 状态的用户，不把 updater toke
 
 - app 里一个后台 goroutine，每 5 分钟判断是否到点。
 - 频率可选：关闭 / 6 小时 / 12 小时 / 24 小时（默认）/ 48 小时。
-- 调 `GET https://api.github.com/repos/<owner>/tack/releases/latest`，带 `If-None-Match`；结果写 `setting`。
+- 调 `GET https://api.github.com/repos/Today-ddr/tackflow/releases/latest`，带 `If-None-Match`；结果写 `setting`。
 - 同时缓存 release 的 `body`（Markdown），更新弹窗直接展示新版本改了什么；当前版本的历史看内嵌 `CHANGELOG.md`。
 - 私有仓库时读 `TACK_GITHUB_TOKEN`（fine-grained，只需 `Contents: read`）。
 - 有新版本：侧栏「设置」图标右上角红点；设置页显示版本对比和更新日志。
@@ -636,7 +636,7 @@ AI 可以在用户说“准备发版”后执行 1–5；第 6 步必须等用�
 ```yaml
 services:
   app:
-    image: ghcr.io/<owner>/tack:${TACK_IMAGE_TAG:-latest}
+    image: ghcr.io/today-ddr/tackflow:${TACK_IMAGE_TAG:-latest}
     env_file: .env
     volumes:
       - ./data:/data
@@ -649,7 +649,7 @@ services:
       retries: 3
 
   updater:
-    image: ghcr.io/<owner>/tack-updater:${TACK_UPDATER_TAG:-v0.1.0}
+    image: ghcr.io/today-ddr/tackflow-updater:${TACK_UPDATER_TAG:-v0.1.0}
     env_file: .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -684,7 +684,7 @@ services:
 | `TACK_COMPOSE_FILE` | 是 | updater 用，默认 `/compose/docker-compose.yml` |
 | `TACK_ENV_FILE` | 是 | updater 用，默认 `/compose/.env` |
 | `TACK_SERVICE` | 是 | updater 用，默认 `app` |
-| `TACK_GITHUB_REPO` | 是 | `owner/tack` |
+| `TACK_GITHUB_REPO` | 是 | `Today-ddr/tackflow` |
 | `TACK_GITHUB_TOKEN` | 否 | 私有仓库读 release 用 |
 | `TACK_TZ` | 否 | 默认 `Asia/Shanghai`，只影响展示 |
 
@@ -926,11 +926,10 @@ SQLite 事务内写入资源事件；SSE 用持久化序号恢复，Webhook 用�
 6. 更新默认每天检查一次，频率可调；侧栏红点提示。
 7. AI 负责改版本和 changelog，推送必须人工点头。
 8. 仓库默认 public，GHCR public；私有部署方案写在 runbook。
-9. 项目名与仓库名使用 `Tack` / `tack`。
+9. 项目名使用 `Tack`，公开仓库为 `Today-ddr/tackflow`；Go 模块与 GHCR 镜像路径使用小写 `today-ddr/tackflow`。
 10. M1 先完成 Inbox + 单板；多项目筛选延后。
 
 ## 23. 待定
 
 - 域名（部署前定）。
-- GitHub owner（仓库名已定 `tack`；若远端被占用，备选 `cork`、`docket`）。
 - M5 发布版本号与目标部署环境（当前仅本地提交，不自动发布）。

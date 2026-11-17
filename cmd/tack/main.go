@@ -17,13 +17,13 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	tack "github.com/today/tack"
-	"github.com/today/tack/internal/api"
-	"github.com/today/tack/internal/auth"
-	"github.com/today/tack/internal/config"
-	"github.com/today/tack/internal/store"
-	"github.com/today/tack/internal/update"
-	"github.com/today/tack/web"
+	tack "github.com/today-ddr/tackflow"
+	"github.com/today-ddr/tackflow/internal/api"
+	"github.com/today-ddr/tackflow/internal/auth"
+	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/store"
+	"github.com/today-ddr/tackflow/internal/update"
+	"github.com/today-ddr/tackflow/web"
 )
 
 var (

@@ -16,9 +16,9 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/today/tack/internal/auth"
-	"github.com/today/tack/internal/config"
-	"github.com/today/tack/internal/store"
+	"github.com/today-ddr/tackflow/internal/auth"
+	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/store"
 )
 
 func newEventAPITest(t *testing.T) (*Server, *http.Cookie, string) {

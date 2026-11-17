@@ -50,12 +50,12 @@ docker-build:
 		--build-arg VERSION=$$(cat VERSION) \
 		--build-arg COMMIT=$$(git rev-parse --short HEAD) \
 		--build-arg BUILD_TIME=$$(date -u +%Y-%m-%dT%H:%M:%SZ) \
-		-t ghcr.io/$${TACK_GHCR_OWNER:-today}/tack:$${TACK_IMAGE_TAG:-dev} .
+		-t ghcr.io/$${TACK_GHCR_OWNER:-today-ddr}/tackflow:$${TACK_IMAGE_TAG:-dev} .
 
 docker-build-updater:
 	docker build \
 		--target updater \
-		-t ghcr.io/$${TACK_GHCR_OWNER:-today}/tack-updater:$${TACK_UPDATER_TAG:-dev} .
+		-t ghcr.io/$${TACK_GHCR_OWNER:-today-ddr}/tackflow-updater:$${TACK_UPDATER_TAG:-dev} .
 
 compose-up:
 	docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d

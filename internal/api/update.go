@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/today/tack/internal/update"
+	"github.com/today-ddr/tackflow/internal/update"
 )
 
 type updateStatusResponse struct {

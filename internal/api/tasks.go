@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/today/tack/internal/capture"
-	"github.com/today/tack/internal/store"
-	taskdomain "github.com/today/tack/internal/tasks"
+	"github.com/today-ddr/tackflow/internal/capture"
+	"github.com/today-ddr/tackflow/internal/store"
+	taskdomain "github.com/today-ddr/tackflow/internal/tasks"
 )
 
 type projectDTO struct {

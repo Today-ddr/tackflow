@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/today/tack/migrations"
+	"github.com/today-ddr/tackflow/migrations"
 )
 
 // Migrate applies every embedded migration that has not been recorded yet.

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/today/tack/migrations"
+	"github.com/today-ddr/tackflow/migrations"
 )
 
 func openTaskIdentityStore(test *testing.T, dataDir string) *Store {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/today/tack/migrations"
+	"github.com/today-ddr/tackflow/migrations"
 )
 
 func TestPasskeyMigrationPreservesExistingUserSessionAndTask(t *testing.T) {

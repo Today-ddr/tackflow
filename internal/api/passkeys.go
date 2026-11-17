@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
-	"github.com/today/tack/internal/auth"
-	"github.com/today/tack/internal/store"
+	"github.com/today-ddr/tackflow/internal/auth"
+	"github.com/today-ddr/tackflow/internal/store"
 )
 
 type passkeyResponse struct {

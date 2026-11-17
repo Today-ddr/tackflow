@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/today/tack/internal/store"
+	"github.com/today-ddr/tackflow/internal/store"
 )
 
 func deliveryTestStore(t *testing.T) *store.Store {

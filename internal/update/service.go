@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/today/tack/internal/store"
+	"github.com/today-ddr/tackflow/internal/store"
 )
 
 const (
