@@ -56,16 +56,12 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Name       string   `json:"name"`
 		Scopes     []string `json:"scopes"`
-		Password   string   `json:"password"`
 		ProjectIDs []int64  `json:"project_ids"`
 		TagIDs     []int64  `json:"tag_ids"`
 		ExpiresAt  *string  `json:"expires_at"`
 	}
 	if err := decodeJSON(w, r, &request); err != nil {
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求格式不正确")
-		return
-	}
-	if !s.confirmSudo(w, r, request.Password) {
 		return
 	}
 	request.Name = strings.TrimSpace(request.Name)
@@ -124,18 +120,11 @@ func (s *Server) handleCreateToken(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) authorizeTokenSecretReplay(w http.ResponseWriter, r *http.Request) bool {
-	principal, ok := s.principal(r)
-	if ok && principal.Session != nil && principal.Session.SudoUntil != nil && principal.Session.SudoUntil.After(s.now().UTC()) {
+	if principal, ok := s.principal(r); ok && principal.Session != nil {
 		return true
 	}
-	var request struct {
-		Password string `json:"password"`
-	}
-	if err := decodeJSON(w, r, &request); err != nil && !errors.Is(err, io.EOF) {
-		s.writeError(w, r, http.StatusBadRequest, "bad_request", "请求格式不正确")
-		return false
-	}
-	return s.confirmSudo(w, r, request.Password)
+	s.writeError(w, r, http.StatusForbidden, "web_only", "该操作只能在网页中使用")
+	return false
 }
 
 func (s *Server) handleRevokeToken(w http.ResponseWriter, r *http.Request) {

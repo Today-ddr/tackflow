@@ -529,7 +529,7 @@ func TestSudoAndSettings(t *testing.T) {
 	resp := webJSON(t, client, http.MethodPost, ts.URL+"/api/v1/tokens", map[string]any{
 		"name": "blocked", "scopes": []string{"read"},
 	})
-	if resp.StatusCode != http.StatusForbidden {
+	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("token without sudo status = %d", resp.StatusCode)
 	}
 	closeBody(t, resp)
@@ -557,7 +557,7 @@ func TestSudoAndSettings(t *testing.T) {
 	}
 }
 
-func TestCreateTokenAcceptsPasswordWithoutPriorSudo(t *testing.T) {
+func TestCreateTokenDoesNotRequirePasswordOrSudo(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t)
@@ -567,11 +567,16 @@ func TestCreateTokenAcceptsPasswordWithoutPriorSudo(t *testing.T) {
 		t.Fatalf("login status = %d", resp.StatusCode)
 	}
 	resp := webJSON(t, client, http.MethodPost, ts.URL+"/api/v1/tokens", map[string]any{
-		"name": "shortcut", "scopes": []string{"capture"}, "password": testPassword,
+		"name": "shortcut", "scopes": []string{"capture"},
 	})
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("create token status = %d, body = %s", resp.StatusCode, body)
+	}
+	closeBody(t, resp)
+	resp = webJSON(t, client, http.MethodDelete, ts.URL+"/api/v1/tokens/1", nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("revoke without sudo status = %d", resp.StatusCode)
 	}
 	closeBody(t, resp)
 }
@@ -598,6 +603,11 @@ func TestRevokeTokenAcceptsEmptyChunkedBody(t *testing.T) {
 		} `json:"api_token"`
 	}
 	decodeResponse(t, resp, &created)
+	resp = webJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/sudo", map[string]string{"password": testPassword})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("sudo before revoke status = %d", resp.StatusCode)
+	}
+	closeBody(t, resp)
 
 	req, err := http.NewRequestWithContext(
 		t.Context(),

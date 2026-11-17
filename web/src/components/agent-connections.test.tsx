@@ -38,6 +38,7 @@ it("creates a scoped key with a purpose and expiry without caching its plaintext
   const { user, client } = mount();
   expect(await screen.findByLabelText("用途")).toHaveValue("read");
   await user.type(screen.getByLabelText("名称"), "CI Agent");
+  expect(document.querySelector("#connection-password")).toBeNull();
   await user.selectOptions(screen.getByLabelText("用途"), "write");
   await user.selectOptions(screen.getByLabelText("有效期"), "7");
   await user.click(await screen.findByLabelText("项目：Codeg"));
@@ -47,6 +48,7 @@ it("creates a scoped key with a purpose and expiry without caching its plaintext
   await screen.findByText("tk_one_time_secret");
   const payload = JSON.parse(String(calls.find((call) => call.url.endsWith("/tokens") && call.init?.method === "POST")?.init?.body)) as Record<string, unknown>;
   expect(payload).toMatchObject({ name: "CI Agent", scopes: ["write"], project_ids: [1], tag_ids: [2] });
+  expect(payload).not.toHaveProperty("password");
   expect(Date.parse(String(payload.expires_at)) - before).toBeGreaterThan(6.99 * 86400000);
   expect(Date.parse(String(payload.expires_at)) - before).toBeLessThan(7.01 * 86400000);
   const cache = JSON.stringify(client.getMutationCache().getAll().map((mutation) => mutation.state));
@@ -103,6 +105,17 @@ it("blocks creation until resource metadata has loaded", async () => {
   await user.type(screen.getByLabelText("名称"), "unsafe default");
   expect(await screen.findByText("分类加载失败")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "生成 API Key" })).toBeDisabled();
+});
+
+it("presents API key details as labeled, scannable columns", async () => {
+  backend();
+  mount();
+  expect(await screen.findByText("Agent A")).toBeInTheDocument();
+  expect(screen.getAllByText("资源范围")).toHaveLength(2);
+  expect(screen.getByText("项目：Codeg · 标签：bug")).toBeInTheDocument();
+  expect(screen.getAllByText("不过期")).toHaveLength(2);
+  expect(screen.getByText("尚未使用")).toBeInTheDocument();
+  expect(screen.getByText("tk_prefix…")).toBeInTheDocument();
 });
 
 it("reports a failed copy instead of pretending it succeeded", async () => {

@@ -67,11 +67,11 @@ func newSudoReplayFixture(t *testing.T) sudoReplayFixture {
 	return sudoReplayFixture{server: server, http: httpServer, client: client, sessionID: sessions[0].ID, database: database}
 }
 
-func TestTokenSecretReplayRequiresCurrentSudo(t *testing.T) {
+func TestTokenSecretReplayRequiresWebSessionButNotSudo(t *testing.T) {
 	fixture := newSudoReplayFixture(t)
 	headers := map[string]string{"Idempotency-Key": "token-secret"}
 	response := webJSON(t, fixture.client, http.MethodPost, fixture.http.URL+"/api/v1/tokens", map[string]any{
-		"name": "original", "scopes": []string{"read", "write"}, "password": testPassword,
+		"name": "original", "scopes": []string{"read", "write"},
 	}, headers)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("create token = %d", response.StatusCode)
@@ -92,60 +92,27 @@ func TestTokenSecretReplayRequiresCurrentSudo(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		name       string
-		sudo       string
-		body       any
-		wantStatus int
-		wantCode   string
+		name string
+		body any
 	}{
-		{"current sudo", "current", map[string]any{}, http.StatusCreated, ""},
-		{"current sudo empty body", "current", nil, http.StatusCreated, ""},
-		{"expired sudo", "expired", map[string]any{}, http.StatusForbidden, "sudo_required"},
-		{"missing sudo", "missing", map[string]any{}, http.StatusForbidden, "sudo_required"},
-		{"exact expiry", "boundary", map[string]any{}, http.StatusForbidden, "sudo_required"},
-		{"missing body", "expired", nil, http.StatusForbidden, "sudo_required"},
-		{"wrong password", "expired", map[string]any{"password": "incorrect"}, http.StatusForbidden, "invalid_password"},
-		{"invalid password type", "expired", map[string]any{"password": 123}, http.StatusBadRequest, "bad_request"},
-		{"correct inline password", "expired", map[string]any{"password": testPassword, "name": "must not create", "scopes": []string{"capture"}}, http.StatusCreated, ""},
+		{"no password", map[string]any{}},
+		{"empty body", nil},
+		{"wrong password is ignored", map[string]any{"password": "incorrect"}},
+		{"invalid password field is ignored", map[string]any{"password": 123}},
+		{"changed request replays original", map[string]any{"name": "must not create", "scopes": []string{"capture"}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			var until any
-			switch test.sudo {
-			case "current":
-				until = fixture.server.now().Add(time.Minute).Format(time.RFC3339)
-			case "expired":
-				until = fixture.server.now().Add(-time.Second).Format(time.RFC3339)
-			case "boundary":
-				until = fixture.server.now().Format(time.RFC3339)
-			}
-			if _, err := fixture.database.ExecContext(t.Context(), "UPDATE session SET sudo_until = ? WHERE id = ?", until, fixture.sessionID); err != nil {
-				t.Fatal(err)
-			}
 			response := webJSON(t, fixture.client, http.MethodPost, fixture.http.URL+"/api/v1/tokens", test.body, headers)
 			body, err := io.ReadAll(response.Body)
 			closeBody(t, response)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if response.StatusCode != test.wantStatus {
-				t.Errorf("replay status = %d, want %d", response.StatusCode, test.wantStatus)
+			if response.StatusCode != http.StatusCreated {
+				t.Errorf("replay status = %d, want %d", response.StatusCode, http.StatusCreated)
 			}
-			if test.wantStatus == http.StatusCreated {
-				if !bytes.Equal(body, original) || response.Header.Get("X-Tack-Idempotent-Replay") != "true" {
-					t.Error("authorized replay did not return the original token response")
-				}
-			} else {
-				if bytes.Contains(body, []byte(created.Token)) || response.Header.Get("X-Tack-Idempotent-Replay") != "" {
-					t.Error("rejected replay revealed the cached token")
-				}
-				var failure struct {
-					Error struct {
-						Code string `json:"code"`
-					} `json:"error"`
-				}
-				if err := json.Unmarshal(body, &failure); err != nil || failure.Error.Code != test.wantCode {
-					t.Errorf("error code = %q, want %q; decode = %v", failure.Error.Code, test.wantCode, err)
-				}
+			if !bytes.Equal(body, original) || response.Header.Get("X-Tack-Idempotent-Replay") != "true" {
+				t.Error("web session replay did not return the original token response")
 			}
 			tokens, err := fixture.server.store.ListAPITokens(t.Context())
 			if err != nil || len(tokens) != 1 || tokens[0].Name != "original" {
@@ -158,12 +125,12 @@ func TestTokenSecretReplayRequiresCurrentSudo(t *testing.T) {
 		})
 	}
 	session, err := fixture.server.store.SessionByID(t.Context(), fixture.sessionID, fixture.server.now())
-	if err != nil || session.SudoUntil == nil || !session.SudoUntil.Equal(fixture.server.now().Add(5*time.Minute)) {
-		t.Fatalf("inline password did not refresh sudo: %+v, %v", session, err)
+	if err != nil || session.SudoUntil != nil {
+		t.Fatalf("token creation unexpectedly enabled sudo: %+v, %v", session, err)
 	}
 	response = webJSON(t, fixture.client, http.MethodPost, fixture.http.URL+"/api/v1/tokens", nil, headers)
 	if response.StatusCode != http.StatusCreated || response.Header.Get("X-Tack-Idempotent-Replay") != "true" {
-		t.Errorf("refreshed sudo cannot replay: %d", response.StatusCode)
+		t.Errorf("session cannot replay token secret: %d", response.StatusCode)
 	}
 	closeBody(t, response)
 }

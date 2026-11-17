@@ -38,8 +38,13 @@ func TestSlowCaptureBodyDoesNotBlockSessionWrites(t *testing.T) {
 		} `json:"api_token"`
 	}
 	decodeResponse(t, webJSON(t, client, http.MethodPost, ts.URL+"/api/v1/tokens", map[string]any{
-		"name": "slow", "scopes": []string{"capture"}, "password": testPassword,
+		"name": "slow", "scopes": []string{"capture"},
 	}), &created)
+	sudo := webJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/sudo", map[string]string{"password": testPassword})
+	if sudo.StatusCode != http.StatusOK {
+		t.Fatalf("sudo before revoke = %d", sudo.StatusCode)
+	}
+	closeBody(t, sudo)
 	body := &pausedRequestBody{entered: make(chan struct{}), release: make(chan struct{}), reader: strings.NewReader(`{"text":"slow"}`)}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

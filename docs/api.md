@@ -36,7 +36,7 @@ Session 默认 30 天滑动续期。网页设置页可以列出和移除登录�
 
 ### API Token
 
-Token 形如 `tk_...`，普通列表不返回明文，凭证表只保存 SHA-256。创建响应的幂等缓存加密保存；取回该响应仍需当前 sudo，不会再次创建 Token。Scope：
+Token 形如 `tk_...`，普通列表不返回明文，凭证表只保存 SHA-256。创建只允许有效网页 Session（Cookie、CSRF client header 和 Origin 校验仍适用），无需重新输入密码或进入 sudo。创建响应的幂等缓存加密保存；同一 Session 可安全重放同一幂等请求以取回首次响应，不会再次创建 Token。撤销仍需 sudo。Scope：
 
 | scope | 能力 |
 |---|---|
@@ -74,7 +74,7 @@ Session 响应为 `auth_kind:"session", token:null`，不能据此判断 Key 可
 
 以下操作要求最近 5 分钟内验证过密码：
 
-- 新建 / 撤销 API Token
+- 撤销 API Token（新建要求有效网页 Session，但不要求 sudo）
 - 修改密码
 - 归档项目
 - 注册 / 删除 Passkey

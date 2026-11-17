@@ -27,7 +27,6 @@ export function AgentConnections() {
   const [days, setDays] = useState("30");
   const [projectIDs, setProjectIDs] = useState<number[]>([]);
   const [tagIDs, setTagIDs] = useState<number[]>([]);
-  const [password, setPassword] = useState("");
   const [revealed, setRevealed] = useState<{ secret: string; id: number } | null>(null);
   const [checkKey, setCheckKey] = useState("");
   const [pendingRevoke, setPendingRevoke] = useState<APIToken | null>(null);
@@ -51,7 +50,7 @@ export function AgentConnections() {
     mutationFn: async () => {
       const result = await api<{ token: string; api_token: APIToken }>("/tokens", {
         method: "POST",
-        body: JSON.stringify({ name: name.trim(), scopes, password, project_ids: projectIDs, tag_ids: tagIDs, expires_at: Number(days) ? new Date(Date.now() + Number(days) * 86400000).toISOString() : null }),
+        body: JSON.stringify({ name: name.trim(), scopes, project_ids: projectIDs, tag_ids: tagIDs, expires_at: Number(days) ? new Date(Date.now() + Number(days) * 86400000).toISOString() : null }),
       });
       setRevealed({ secret: result.token, id: result.api_token.id });
       setCheckKey(result.token);
@@ -59,7 +58,6 @@ export function AgentConnections() {
     },
     onSuccess: () => {
       setName("");
-      setPassword("");
       setProjectIDs([]);
       setTagIDs([]);
       void client.invalidateQueries({ queryKey: ["tokens"] });
@@ -91,13 +89,26 @@ export function AgentConnections() {
       <div className="settings-card-heading"><h2>API Keys</h2><button className="text-button" type="button" disabled={tokens.isFetching} onClick={() => void tokens.refetch()}>刷新</button></div>
       <QueryFeedback pending={tokens.isPending} error={tokens.error} retry={() => void tokens.refetch()} />
       {tokens.data?.tokens.length === 0 ? <p className="muted-copy">还没有 API Key。在下方为第一个 Agent 生成一枚。</p> : null}
-      <div className="management-list">{tokens.data?.tokens.map((token) => <div className="management-item" key={token.id}>
-        <div className="management-main"><strong>{token.name}</strong><small>{token.prefix}… · {token.scopes.join(" / ")}</small>
-          <small>项目：{token.project_ids.length ? token.project_ids.map((id) => projects.data?.projects.find((item) => item.id === id)?.name ?? `#${id}`).join("、") : "不限"} · 标签：{token.tag_ids.length ? token.tag_ids.map((id) => tags.data?.tags.find((item) => item.id === id)?.name ?? `#${id}`).join("、") : "不限"}</small>
-          <small>{token.expires_at ? `${Date.parse(token.expires_at) <= Date.now() ? "已过期" : "到期"} ${formatDateTime(token.expires_at)}` : "不过期"} · {token.last_used_at ? `最近请求 ${formatDateTime(token.last_used_at)}` : "尚未使用"}</small>
+      {tokens.data?.tokens.length ? <div className="token-table-wrap">
+        <div className="token-table-head" aria-hidden="true"><span>名称</span><span>权限</span><span>资源范围</span><span>有效期</span><span>最近请求</span><span>操作</span></div>
+        <div className="token-table">
+          {tokens.data.tokens.map((token) => {
+            const expired = Boolean(token.expires_at && Date.parse(token.expires_at) <= Date.now());
+            const resourceSummary = [
+              token.project_ids.length ? `项目：${token.project_ids.map((id) => projects.data?.projects.find((item) => item.id === id)?.name ?? `#${id}`).join("、")}` : "项目：不限",
+              token.tag_ids.length ? `标签：${token.tag_ids.map((id) => tags.data?.tags.find((item) => item.id === id)?.name ?? `#${id}`).join("、")}` : "标签：不限",
+            ].join(" · ");
+            return <article className="token-table-row" key={token.id}>
+              <div className="token-cell token-cell-name"><span className="token-cell-label">名称</span><strong>{token.name}</strong><code>{token.prefix}…</code></div>
+              <div className="token-cell"><span className="token-cell-label">权限</span><span>{token.scopes.join(" / ")}</span></div>
+              <div className="token-cell"><span className="token-cell-label">资源范围</span><span>{resourceSummary}</span></div>
+              <div className="token-cell"><span className="token-cell-label">有效期</span><span className={expired ? "token-expired" : ""}>{token.expires_at ? `${expired ? "已过期" : "到期"} ${formatDateTime(token.expires_at)}` : "不过期"}</span></div>
+              <div className="token-cell"><span className="token-cell-label">最近请求</span><span>{token.last_used_at ? formatDateTime(token.last_used_at) : "尚未使用"}</span></div>
+              <div className="token-cell token-cell-actions"><span className="token-cell-label">操作</span><div className="settings-button-row"><button className="text-button" type="button" disabled={!baseURL} aria-label={`接入说明 ${token.name}`} onClick={() => setGuideToken(token)}>接入说明</button><button className="text-button text-button-danger" type="button" disabled={revoke.isPending} aria-label={`撤销 ${token.name}`} onClick={() => setPendingRevoke(token)}>撤销</button></div></div>
+            </article>;
+          })}
         </div>
-        <div className="settings-button-row"><button className="text-button" type="button" disabled={!baseURL} aria-label={`接入说明 ${token.name}`} onClick={() => setGuideToken(token)}>接入说明</button><button className="text-button text-button-danger" type="button" disabled={revoke.isPending} aria-label={`撤销 ${token.name}`} onClick={() => setPendingRevoke(token)}>撤销</button></div>
-      </div>)}</div>
+      </div> : null}
       <p className="settings-meta">最近请求代表这枚 Key 曾被使用，不代表 Agent 在线。更换 Key：新建 → 在 Agent 中替换并检查 → 撤销旧 Key；正在执行的领取绑定旧 Key，请先结束当前工作。</p>
       {revoke.error ? <p className="form-error" role="alert">{errorMessage(revoke.error)}</p> : null}
     </section>
@@ -111,10 +122,7 @@ export function AgentConnections() {
         </div>
         <p className="settings-copy">{purposes.find((item) => item.value === purpose)?.description}</p>
         {purpose === "custom" ? <fieldset className="resource-scope"><legend>权限</legend><div className="scope-row">{["read", "capture", "write"].map((scope) => <label className="check-chip" key={scope}><input type="checkbox" checked={scopes.includes(scope)} onChange={(event) => setScopes((current) => event.target.checked ? [...current, scope] : current.filter((item) => item !== scope))} />{scope}</label>)}</div></fieldset> : null}
-        <div className="form-row">
-          <div className="field"><label htmlFor="connection-expiry">有效期</label><select id="connection-expiry" className="settings-select" value={days} onChange={(event) => setDays(event.target.value)}>{[7, 30, 90, 365, 0].map((value) => <option key={value} value={value}>{value ? `${value} 天` : "不过期"}</option>)}</select></div>
-          <div className="field"><label htmlFor="connection-password">当前密码</label><Input id="connection-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="最近已验证可留空" /></div>
-        </div>
+        <div className="field"><label htmlFor="connection-expiry">有效期</label><select id="connection-expiry" className="settings-select" value={days} onChange={(event) => setDays(event.target.value)}>{[7, 30, 90, 365, 0].map((value) => <option key={value} value={value}>{value ? `${value} 天` : "不过期"}</option>)}</select></div>
         <p className="settings-copy">项目和标签不选表示该维度不限。同一组匹配任意一项；两组均选择时必须同时满足。建议只开放所需项目。</p>
         <QueryFeedback pending={projects.isPending || tags.isPending} error={projects.error ?? tags.error} retry={() => { void projects.refetch(); void tags.refetch(); }} />
         <fieldset className="resource-scope"><legend>项目范围（可选）</legend><div className="scope-row">{projects.data?.projects.map((project) => <label className="check-chip" key={project.id}><input type="checkbox" aria-label={`项目：${project.name}`} disabled={Boolean(project.archived_at)} checked={projectIDs.includes(project.id)} onChange={(event) => setProjectIDs((current) => event.target.checked ? [...current, project.id] : current.filter((id) => id !== project.id))} />{project.name}{project.archived_at ? "（已归档）" : ""}</label>)}</div>{projects.data?.projects.length === 0 ? <p className="settings-meta">尚无项目，可先在「项目与标签」中创建。</p> : null}</fieldset>

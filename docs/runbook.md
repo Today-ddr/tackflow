@@ -216,7 +216,7 @@ curl -fsS https://tack.example.com/api/v1/version
 
 ## Agent 连接与 Key
 
-「设置 → Agent 连接」管理 API Key、接入说明和只读检查，旧 `/settings/tokens` 路径仍有效。新网页创建默认 30 天，可选 7/90/365 天或不过期；旧 Key 不设置默认有效期。迁移 0010 仅追加 `api_token.expires_at`，启动新版本前按常规流程备份。
+「设置 → Agent 连接」管理 API Key、接入说明和只读检查，旧 `/settings/tokens` 路径仍有效。已登录网页可直接创建 Key，不再要求重复输入密码；创建仍受 Session、CSRF 和 Origin 校验保护，撤销仍要求 sudo。新网页创建默认 30 天，可选 7/90/365 天或不过期；旧 Key 不设置默认有效期。迁移 0010 仅追加 `api_token.expires_at`，启动新版本前按常规流程备份。
 
 检查只向当前 Tack 发认证 GET；远程 Agent 需另在自身运行环境执行说明中的 curl，且不能把 localhost 当服务器公网地址。最近请求含检查请求，不是在线状态。更换 Key 先结束进行中的领取，创建/配置/验证新 Key，再撤销旧 Key；已有 claim 不能转移给新凭证。
 

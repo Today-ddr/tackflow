@@ -1812,6 +1812,18 @@ dialog::backdrop {
 .management-main { display: grid; flex: 1; min-width: min(12rem, 100%); gap: 0.3rem; overflow-wrap: anywhere; }
 .management-main strong { font-size: 0.85rem; font-weight: 500; }
 .management-main small { color: var(--muted); font-size: 0.8rem; }
+.token-table-wrap { margin: 0.7rem 0; overflow-x: auto; }
+.token-table-head,
+.token-table-row { display: grid; grid-template-columns: minmax(8rem, 1.1fr) minmax(5rem, 0.7fr) minmax(9rem, 1.35fr) minmax(8rem, 1fr) minmax(8rem, 1fr) minmax(8rem, auto); gap: 0.7rem; }
+.token-table-head { padding: 0.45rem 0.55rem; color: var(--muted); font-size: 0.69rem; font-weight: 600; }
+.token-table-row { align-items: start; border-top: 1px solid var(--line); padding: 0.7rem 0.55rem; color: var(--ink); font-size: 0.74rem; }
+.token-cell { display: grid; min-width: 0; gap: 0.18rem; overflow-wrap: anywhere; }
+.token-cell-name strong { font-weight: 600; }
+.token-cell-name code { color: var(--muted); font-family: var(--font-mono); font-size: 0.69rem; }
+.token-cell-label { display: none; color: var(--muted); font-size: 0.68rem; font-weight: 600; }
+.token-cell-actions { justify-items: start; }
+.token-cell-actions .settings-button-row { flex-wrap: nowrap; gap: 0.55rem; }
+.token-expired { color: var(--danger); }
 .resource-scope { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.65rem; }
 .resource-scope legend { color: var(--muted); font-size: 0.8rem; }
 .resource-scope .check-chip { max-width: 100%; overflow-wrap: anywhere; }
@@ -2425,6 +2437,19 @@ dialog::backdrop {
     right: 0.75rem;
     bottom: calc(4.5rem + env(safe-area-inset-bottom));
   }
+}
+
+@media (max-width: 720px) {
+  .token-table-head { display: none; }
+
+  .token-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    padding: 0.8rem 0.2rem;
+  }
+
+  .token-cell-label { display: block; }
+  .token-cell-actions { grid-column: 1 / -1; }
 }
 
 @media (max-width: 640px) {
