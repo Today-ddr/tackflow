@@ -20,6 +20,7 @@ import (
 
 	"github.com/today-ddr/tackflow/internal/auth"
 	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/diagnostics"
 	"github.com/today-ddr/tackflow/internal/store"
 	"github.com/today-ddr/tackflow/internal/update"
 )
@@ -46,6 +47,7 @@ type Server struct {
 	updateSvc    *update.Service
 	updater      *update.UpdaterClient
 	mutationGate chan struct{}
+	diagnostics  *diagnostics.Log
 }
 
 func NewServer(
@@ -126,6 +128,7 @@ func (s *Server) routes() http.Handler {
 
 	mux.Handle("GET /api/v1/settings", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleGetSettings))))
 	mux.Handle("PATCH /api/v1/settings", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handlePatchSettings)))))
+	mux.Handle("GET /api/v1/logs", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleListLogs))))
 	mux.Handle("GET /api/v1/update/status", s.requireAuth(s.requireWeb(http.HandlerFunc(s.handleUpdateStatus))))
 	mux.Handle("POST /api/v1/update/check", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateCheck)))))
 	mux.Handle("POST /api/v1/update/apply", s.requireAuth(s.requireWeb(s.withIdempotency(http.HandlerFunc(s.handleUpdateApply)))))
@@ -415,6 +418,10 @@ func (s *Server) SetChangelog(changelog string) {
 	s.changelog = changelog
 }
 
+func (s *Server) SetDiagnostics(log *diagnostics.Log) {
+	s.diagnostics = log
+}
+
 func (s *Server) SetUpdateService(service *update.Service, client *update.UpdaterClient) {
 	s.updateSvc = service
 	s.updater = client
@@ -525,6 +532,7 @@ func (s *Server) writeJSON(w http.ResponseWriter, status int, value any) {
 }
 
 func (s *Server) writeError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	setRequestErrorCode(r, code)
 	s.writeJSON(w, status, map[string]any{
 		"error": map[string]string{
 			"code":       code,

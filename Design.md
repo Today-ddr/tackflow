@@ -334,6 +334,7 @@ CREATE TABLE idempotency (
 |---|---|---|
 | `GET` | `/version` | `{version, commit, build_time}`，无需认证 |
 | `GET` | `/changelog` | 内嵌 `CHANGELOG.md`，无需认证 |
+| `GET` | `/logs` | 仅网页 Session，读取最近诊断记录，支持 level / request_id / limit 筛选 |
 | `GET` | `/update/status` | 当前/最新版本、上次检查时间、检查频率、更新任务状态 |
 | `POST` | `/update/check` | 手动检查（限流 1 次/分钟） |
 | `POST` | `/update/apply` | `{version, password}`，需要 sudo，转给 updater |
@@ -396,7 +397,7 @@ Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码
 以下操作要求 5 分钟内重新输入过密码：
 
 - 应用更新 / 回滚
-- 新建或撤销 API token
+- 撤销 API token（创建只要求有效网页 Session，不要求重新输密码）
 - 修改密码
 - 删除项目
 - 注册或删除 Passkey
@@ -429,6 +430,7 @@ Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码
 | `/settings/tokens` | API token 管理 |
 | `/settings/connections` | Agent 连接、API Key 管理与接入说明；旧 tokens 路由兼容 |
 | `/settings/update` | 版本、更新日志、检查/更新/回滚 |
+| `/settings/logs` | 服务端诊断日志、筛选、复制与下载 JSONL |
 
 ### 13.2 看板交互
 
@@ -492,6 +494,10 @@ Bitwarden 不是 IdP，没法给第三方站点做 OAuth；但它可以存密码
 - 圆角 10px；卡片 1px 描边，无阴影；拖拽时才出现轻阴影。
 - 动效 150–200ms `ease-out`；不加装饰性动画。
 - 空状态用一句短文案 + 一个动作，不放插画。
+- 全局保持低噪声：不显示重复副标题、纯协议/分类说明徽章、无意义的“未分类”标签或常驻任务编号；项目、用户创建的标签、优先级、截止日期和 Agent 状态等有效信息按需展示，不为追求“简洁”而丢失扫读价值。
+- 任务卡片同时提供独立的详情操作、可键盘/触屏使用的状态选择器和拖拽把手；触屏纵向滚动不能被拖拽拦截。
+- 快速收集优先采用看板底部的单一输入框；空白区域可将焦点交给该输入框，但不得抢走交互控件、编辑区、文本选区或拖拽操作的焦点。`/capture` 仍是 PWA 全屏入口。
+- 页面切换和控件反馈可使用短促的 transform/opacity 过渡，统一使用动效 token；必须支持 `prefers-reduced-motion`，不添加装饰性动画。
 
 ### 13.5 性能预算
 

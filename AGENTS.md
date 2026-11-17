@@ -44,10 +44,14 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d
 - 密码使用 Argon2 PHC；数据库只保存 session token 哈希。
 - 生产 `TACK_PUBLIC_URL` 必须是 HTTPS；本地 HTTP 才允许非 `__Host-` Cookie。
 - 前端 strict TypeScript，禁止 `any`；颜色只用 token。
+- UI 保留暖白纸张与墨色的克制层级；删除无意义、重复或纯装饰标签/副标题，不隐藏有助扫读的任务元数据；新增页面和组件沿用一致的留白、字号、边框与按钮模式。
+- 动效只服务于状态反馈和空间关系，优先短促的 transform/opacity 过渡；必须尊重 `prefers-reduced-motion`，不得用动画、徽章或装饰制造噪声。
+- 窄屏优先保证主操作、任务状态和触控滚动可达；拖拽把手与内容操作分离，不得阻断页面纵向滚动。
 - API Token 只能走 Bearer；Token 管理、Session、密码和更新只接受网页 Session。
 - 更新链路由 app 检查 Release，由 updater 执行 Docker；app 不接触 docker.sock。
 - updater 只接受 `vX.Y.Z`、必须能在 `TACK_GITHUB_REPO` 的 Release 中查到；更新前必须备份，失败必须恢复旧 tag 和数据库。
 - `/api/v1` 只做兼容增量，破坏性变更开 v2。
+- 排障先读「设置 → 日志」或 `TACK_DATA_DIR/logs/tack-*.jsonl`，用错误请求 ID 关联路由、HTTP 状态和错误码；日志仅收白名单结构化字段，禁止记录正文、查询参数、密码、Cookie、Token 和任务内容。完整读取方式见 `docs/runbook.md`。
 
 ## Git
 

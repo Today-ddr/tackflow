@@ -94,6 +94,8 @@ Session 响应为 `auth_kind:"session", token:null`，不能据此判断 Key 可
 
 ## 登录与会话
 
+`GET /api/v1/logs` 仅网页 Session 可读，返回 `Cache-Control: no-store` 与 `{"entries":[...]}`。参数：`level`（INFO/WARN/ERROR/DEBUG，精确匹配）、`request_id`（`req_` 加 16 位十六进制）、`limit`（1–500，默认 200）。按时间倒序返回当前进程从轮转日志恢复的最近 500 条记录。每条含 UTC `time`、`level`、`event`；请求另含 `request_id`、`method`、路由模板 `route`、`status`、`duration_ms` 及可选 `error_code`。不提供任意文件读取，Token 无权访问。持久轮转与排障步骤见 [runbook](runbook.md#网页诊断日志)。
+
 ### `POST /api/v1/auth/login`
 
 ```json

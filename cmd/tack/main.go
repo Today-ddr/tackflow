@@ -21,6 +21,7 @@ import (
 	"github.com/today-ddr/tackflow/internal/api"
 	"github.com/today-ddr/tackflow/internal/auth"
 	"github.com/today-ddr/tackflow/internal/config"
+	"github.com/today-ddr/tackflow/internal/diagnostics"
 	"github.com/today-ddr/tackflow/internal/store"
 	"github.com/today-ddr/tackflow/internal/update"
 	"github.com/today-ddr/tackflow/web"
@@ -90,7 +91,12 @@ func serve(getenv func(string) string, stdout io.Writer) error {
 		return err
 	}
 
-	logger := slog.New(slog.NewTextHandler(stdout, nil))
+	applicationLog, err := diagnostics.Open(filepath.Join(cfg.DataDir, "logs"), stdout, diagnostics.Options{})
+	if err != nil {
+		return fmt.Errorf("open application diagnostics: %w", err)
+	}
+	defer func() { _ = applicationLog.Close() }()
+	logger := slog.New(applicationLog.Handler())
 	updateService := update.NewService(
 		st,
 		update.NewChecker(cfg.GitHubRepo, cfg.GitHubToken),
@@ -110,6 +116,7 @@ func serve(getenv func(string) string, stdout io.Writer) error {
 		time.Now,
 	)
 	apiServer.SetChangelog(tack.Changelog)
+	apiServer.SetDiagnostics(applicationLog)
 	apiServer.SetUpdateService(
 		updateService,
 		update.NewUpdaterClient(cfg.UpdaterURL, cfg.UpdaterToken),

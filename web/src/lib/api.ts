@@ -211,7 +211,7 @@ export async function downloadExport(format: "json" | "csv"): Promise<void> {
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    return error.message;
+    return error.requestId ? `${error.message}（请求 ID：${error.requestId}）` : error.message;
   }
   if (error instanceof Error && error.message) {
     return error.message;

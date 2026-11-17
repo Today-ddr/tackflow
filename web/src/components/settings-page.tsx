@@ -32,6 +32,7 @@ import { TrashSettings } from "./trash-settings";
 import { PasskeySettings } from "./passkey-settings";
 import { IntegrationsSettings } from "./integrations-settings";
 import { AgentConnections } from "./agent-connections";
+import { LogSettings } from "./log-settings";
 
 interface SettingsPageProps {
   path: string;
@@ -40,7 +41,7 @@ interface SettingsPageProps {
   onLogout: () => void;
 }
 
-type SettingsTab = "general" | "account" | "connections" | "update" | "data" | "organize" | "trash" | "integrations";
+type SettingsTab = "general" | "account" | "connections" | "update" | "data" | "organize" | "trash" | "integrations" | "logs";
 
 const tabs: Array<{ id: SettingsTab; label: string; path: string }> = [
   { id: "general", label: "常规", path: "/settings" },
@@ -51,6 +52,7 @@ const tabs: Array<{ id: SettingsTab; label: string; path: string }> = [
   { id: "integrations", label: "集成", path: "/settings/integrations" },
   { id: "update", label: "更新", path: "/settings/update" },
   { id: "data", label: "数据", path: "/settings/data" },
+  { id: "logs", label: "日志", path: "/settings/logs" },
 ];
 
 export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps) {
@@ -132,6 +134,7 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
           />
         ) : null}
         {tab === "data" ? <DataSettings notify={notify} /> : null}
+        {tab === "logs" ? <LogSettings /> : null}
       </div>
 
       <div className="settings-footer-note">

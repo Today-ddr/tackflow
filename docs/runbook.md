@@ -194,6 +194,21 @@ curl -fsS https://tack.example.com/api/v1/version
 - **版本检查失败**：确认 `TACK_GITHUB_REPO`、仓库可见性和 `TACK_GITHUB_TOKEN`；私有仓库需要 token。
 - **Caddy 拿不到证书**：确认 DNS、80/443 入站和 `TACK_SITE_ADDRESS`。
 
+## 网页诊断日志
+
+「设置 → 日志」读取 Tack 服务端的请求、错误和维护事件，可按级别、请求 ID 筛选，按路由/错误码搜索，并复制或下载当前结果的 JSONL。页面报错会附带请求 ID，可用它定位同一请求的路由、HTTP 状态、错误码和毫秒耗时；复制的 JSONL 可直接交给 AI 分析。
+
+日志持久保存在 `TACK_DATA_DIR/logs/tack-0.jsonl`，旧文件轮转为 `tack-1.jsonl`、`tack-2.jsonl`，每个文件最多 1 MiB。目录权限 0700、文件 0600；服务重启后恢复最多 500 条最近记录。`GET /api/v1/logs?level=ERROR&limit=200&request_id=req_...` 只接受网页 Session，响应禁止缓存；API Key 不能读取。日志只收白名单字段，不记录请求正文、查询参数、原始 URL、密码、Cookie、API Key 或任务内容；外部错误中的凭证和 URL 查询参数会脱敏。
+
+无网页连接时，可在服务器读取完整轮转窗口：
+
+```bash
+docker compose --env-file .env -f docker-compose.yml exec -T app /tack healthcheck
+jq -s 'sort_by(.time)[] | select(.level == "ERROR" or .level == "WARN")' data/logs/tack-*.jsonl
+```
+
+这不是审计日志或所有组件的日志聚合；浏览器 JS 异常查看浏览器控制台，升级重建/回滚查看 updater，TLS 与入口网络查看 Caddy。日志达到容量会淘汰旧记录；遇到问题尽早复制相关时间窗口和 `/api/v1/version` 信息。
+
 ## 手机与快捷指令
 
 - PWA：打开 `https://tack.example.com/capture`，添加到主屏幕；manifest 的 `start_url` 就是 capture。
