@@ -77,12 +77,11 @@ export function AgentConnections() {
 
   return <div className="settings-grid agent-connections">
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>Agent 连接</h2><span className="status-pill">REST API v1</span></div>
-      <p className="settings-copy">每个 Agent 或脚本使用独立 API Key，便于限制权限、查看最近请求和单独撤销。</p>
-      <ol className="connection-steps"><li>生成专用 Key，选择所需权限与范围。</li><li>在 Agent 的环境变量中保存 Key，复制接入说明。</li><li>先检查认证，再按需读取、收集或领取任务。</li></ol>
+      <div className="settings-card-heading"><h2>Agent 连接</h2></div>
+      <p className="settings-copy">每个 Agent 使用独立 Key，可限制权限与资源范围；撤销后立即失效。</p>
       <QueryFeedback pending={connection.isPending} error={connection.error} retry={() => void connection.refetch()} />
       {baseURL ? <div className="connection-address"><span>API 地址</span><code>{baseURL}</code><Button variant="quiet" type="button" onClick={() => setGuideToken(null)}>查看通用说明</Button></div> : null}
-      <p className="settings-copy">当前支持有 HTTP 或终端能力的 Agent。MCP 尚未启用；聊天客户端的 MCP 地址栏不能直接填写此 API 地址。</p>
+      <p className="settings-meta">使用 REST API；当前没有 MCP endpoint。</p>
     </section>
 
     <section className="settings-card settings-card-wide">

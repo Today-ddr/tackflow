@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -35,6 +35,7 @@ import {
 import { TaskCard, TaskCardBody } from "./task-card";
 import { useToast } from "./toast";
 import { invalidateTaskData } from "../app/task-cache";
+import { CaptureComposer } from "./capture-composer";
 
 const statusOrder: TaskStatus[] = ["inbox", "todo", "doing", "review", "done"];
 
@@ -44,7 +45,8 @@ interface BoardProps {
   query: string;
   onOpenTask: (taskID: number) => void;
   onOpenPalette: () => void;
-  onOpenCapture: () => void;
+  captureText: string;
+  onCaptureTextChange: (value: string) => void;
   onClearFilter: () => void;
 }
 
@@ -54,13 +56,17 @@ export function Board({
   query,
   onOpenTask,
   onOpenPalette,
-  onOpenCapture,
+  captureText,
+  onCaptureTextChange,
   onClearFilter,
 }: BoardProps) {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const lastDragEnd = useRef(0);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -141,6 +147,7 @@ export function Board({
   };
 
   const onDragEnd = (event: DragEndEvent) => {
+    lastDragEnd.current = Date.now();
     setActiveTask(null);
     const current = event.active.data.current?.task as Task | undefined;
     if (!current || !event.over) {
@@ -179,7 +186,11 @@ export function Board({
   };
 
   return (
-    <section className="board-page" aria-label="任务看板">
+    <section className="board-page" aria-label="任务看板" onClick={(event) => {
+      if (Date.now() - lastDragEnd.current < 250 || activeTask || window.getSelection()?.toString()) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && !target.closest("button, a, input, textarea, select, form, .task-card, .column-header, .board-header")) composerRef.current?.focus();
+    }}>
       <header className="board-header">
         <div>
           <div className="board-title-line">
@@ -200,10 +211,6 @@ export function Board({
             <span>搜索任务</span>
             <kbd>⌘K</kbd>
           </button>
-          <button className="primary-button capture-shortcut" type="button" onClick={onOpenCapture}>
-            <Plus size={16} aria-hidden />
-            记一笔
-          </button>
         </div>
       </header>
 
@@ -212,6 +219,7 @@ export function Board({
         collisionDetection={closestCorners}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onDragCancel={() => setActiveTask(null)}
       >
         <div className={`board-grid ${filter.kind === "inbox" ? "board-grid-inbox" : ""}`}>
           {statuses.map((status) => {
@@ -227,6 +235,10 @@ export function Board({
                 collapsed={collapsed}
                 onToggle={() => setDoneOpen((value) => !value)}
                 onOpenTask={onOpenTask}
+                onStatusChange={(id, targetStatus) => {
+                  if (!moveMutation.isPending) moveMutation.mutate({ id, status: targetStatus });
+                }}
+                movePending={moveMutation.isPending}
               />
             );
           })}
@@ -239,6 +251,11 @@ export function Board({
           ) : null}
         </DragOverlay>
       </DndContext>
+      <div className={`board-composer-dock ${composerFocused ? "board-composer-dock-focused" : ""}`} onClick={(event) => {
+        if (event.target === event.currentTarget && !window.getSelection()?.toString()) composerRef.current?.focus();
+      }}>
+        <CaptureComposer text={captureText} onTextChange={onCaptureTextChange} inputRef={composerRef} onFocusChange={setComposerFocused} />
+      </div>
     </section>
   );
 }
@@ -249,12 +266,16 @@ function BoardColumn({
   collapsed,
   onToggle,
   onOpenTask,
+  onStatusChange,
+  movePending,
 }: {
   status: TaskStatus;
   tasks: Task[];
   collapsed: boolean;
   onToggle: () => void;
   onOpenTask: (taskID: number) => void;
+  onStatusChange: (taskID: number, status: TaskStatus) => void;
+  movePending: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
@@ -291,7 +312,7 @@ function BoardColumn({
         >
           <div className="column-body">
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} onOpen={onOpenTask} />
+              <TaskCard key={task.id} task={task} onOpen={onOpenTask} onStatusChange={onStatusChange} pending={movePending} />
             ))}
             {tasks.length === 0 ? (
               <div className={`column-empty ${isOver ? "column-empty-over" : ""}`}>
@@ -349,7 +370,7 @@ function InlineComposer({ status }: { status: TaskStatus }) {
       className="inline-composer"
       onSubmit={(event) => {
         event.preventDefault();
-        if (title.trim()) {
+        if (title.trim() && !createMutation.isPending) {
           createMutation.mutate();
         }
       }}
@@ -361,6 +382,7 @@ function InlineComposer({ status }: { status: TaskStatus }) {
         placeholder={status === "inbox" ? "随手记一句…#tag @项目" : "任务标题"}
         aria-label={`新建${statusLabel(status)}任务`}
         onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing || event.keyCode === 229) return;
           if (event.key === "Escape") {
             setOpen(false);
             setTitle("");

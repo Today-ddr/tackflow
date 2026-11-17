@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Task } from "../lib/api";
-import { TaskCardBody } from "./task-card";
+import { TaskCard, TaskCardBody } from "./task-card";
 
 function task(overrides: Partial<Task> = {}): Task {
   return {
@@ -25,11 +26,12 @@ function task(overrides: Partial<Task> = {}): Task {
 }
 
 describe("TaskCardBody", () => {
-  it("keeps the task identity visible when there is no due date", () => {
+  it("omits meaningless placeholder metadata", () => {
     render(<TaskCardBody task={task()} />);
 
     expect(screen.getByText("整理看板层级")).toBeInTheDocument();
-    expect(screen.getByText("#7")).toBeInTheDocument();
+    expect(screen.queryByText("#7")).not.toBeInTheDocument();
+    expect(screen.queryByText("未分类")).not.toBeInTheDocument();
   });
 
   it("shows compact task metadata without duplicating decoration", () => {
@@ -63,4 +65,18 @@ describe("TaskCardBody", () => {
     expect(screen.getByText("中")).toBeInTheDocument();
     expect(screen.getByText("#ui")).toBeInTheDocument();
   });
+});
+
+it("changes status without opening the task and keeps the drag handle separate", async () => {
+  const open = vi.fn();
+  const changeStatus = vi.fn();
+  const current = task();
+  render(<TaskCard task={current} onOpen={open} onStatusChange={changeStatus} />);
+  const user = userEvent.setup();
+  await user.selectOptions(screen.getByRole("combobox", { name: `更改状态：${current.title}` }), "doing");
+  expect(changeStatus).toHaveBeenCalledWith(current.id, "doing");
+  expect(open).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: `拖动任务 ${current.title}` })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: `打开任务 ${current.title}` }));
+  expect(open).toHaveBeenCalledWith(current.id);
 });

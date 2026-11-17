@@ -140,7 +140,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
       open
       onClose={onClose}
       title={task?.title ?? "任务详情"}
-      subtitle={task ? `${statusLabel(task.status)} · 任务 #${task.id}` : "正在读取…"}
+      subtitle={task ? statusLabel(task.status) : "正在读取…"}
       className="task-sheet"
       footer={
         <div className="dialog-actions sheet-actions">
@@ -267,7 +267,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
               />
               <span>
                 <strong>允许 agent 领取</strong>
-                <small>标记为 agent_ready，脚本可以取走这张卡。</small>
+                <small>允许连接的 Agent 领取并处理。</small>
               </span>
             </label>
 

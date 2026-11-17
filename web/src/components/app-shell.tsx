@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Inbox,
@@ -43,6 +43,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [taskID, setTaskID] = useState<number | null>(null);
   const [projectOpen, setProjectOpen] = useState(false);
+  const [captureText, setCaptureText] = useState("");
 
   const tasksQuery = useQuery<TasksResponse>({
     queryKey: ["tasks"],
@@ -68,6 +69,13 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
   const inboxCount = tasks.filter((task) => task.status === "inbox").length;
   const isSettings = path.startsWith("/settings");
   const isCapture = path === "/capture";
+  const openCapture = useCallback(() => {
+    if (path === "/") {
+      document.querySelector<HTMLTextAreaElement>(".capture-composer textarea")?.focus();
+    } else {
+      navigate("/capture");
+    }
+  }, [navigate, path]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -87,12 +95,29 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
         target?.isContentEditable;
       if (!typing && !event.metaKey && !event.ctrlKey && event.key.toLowerCase() === "n") {
         event.preventDefault();
-        navigate("/capture");
+        openCapture();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigate]);
+  }, [openCapture]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateInset = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      document.documentElement.style.setProperty("--visual-viewport-inset", `${inset}px`);
+    };
+    updateInset();
+    viewport.addEventListener("resize", updateInset);
+    viewport.addEventListener("scroll", updateInset);
+    return () => {
+      viewport.removeEventListener("resize", updateInset);
+      viewport.removeEventListener("scroll", updateInset);
+      document.documentElement.style.removeProperty("--visual-viewport-inset");
+    };
+  }, []);
 
   useEffect(() => {
     if (path !== "/") {
@@ -119,7 +144,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
   const mobileTitle = isSettings ? "设置" : filterLabel || "看板";
 
   if (isCapture) {
-    return <CapturePage onBack={() => navigate("/")} />;
+    return <CapturePage onBack={() => navigate("/")} text={captureText} onTextChange={setCaptureText} />;
   }
 
   return (
@@ -129,10 +154,9 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
           <button className="wordmark" type="button" onClick={() => navigate("/")}>
             Tack
           </button>
-          <p className="sidebar-kicker">任务看板</p>
         </div>
 
-        <button className="quick-capture" type="button" onClick={() => navigate("/capture")}>
+        <button className="quick-capture" type="button" onClick={openCapture}>
           <Plus size={16} aria-hidden />
           记一笔
           <kbd>N</kbd>
@@ -315,14 +339,15 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
             query={query}
             onOpenTask={setTaskID}
             onOpenPalette={() => setPaletteOpen(true)}
-            onOpenCapture={() => navigate("/capture")}
+            captureText={captureText}
+            onCaptureTextChange={setCaptureText}
             onClearFilter={() => setFilter({ kind: "all" })}
           />
         )}
       </main>
 
       <nav className="mobile-nav" aria-label="手机导航">
-        <button type="button" onClick={() => navigate("/")} aria-label="看板">
+        <button type="button" onClick={() => { setFilter({ kind: "all" }); setQuery(""); navigate("/"); }} aria-label="看板" aria-current={!isSettings && filter.kind === "all" ? "page" : undefined}>
           <LayoutGrid size={19} aria-hidden />
           <span>看板</span>
         </button>
@@ -333,6 +358,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
             navigate("/");
           }}
           aria-label="收件箱"
+          aria-current={!isSettings && filter.kind === "inbox" ? "page" : undefined}
         >
           <Inbox size={19} aria-hidden />
           <span>收件箱</span>
@@ -340,7 +366,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
         <button
           className="mobile-capture"
           type="button"
-          onClick={() => navigate("/capture")}
+          onClick={openCapture}
           aria-label="记一笔"
         >
           <Plus size={22} aria-hidden />
@@ -350,7 +376,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
           <Search size={19} aria-hidden />
           <span>搜索</span>
         </button>
-        <button type="button" onClick={() => navigate("/settings")} aria-label="设置">
+        <button type="button" onClick={() => navigate("/settings")} aria-label="设置" aria-current={isSettings ? "page" : undefined}>
           <Settings size={19} aria-hidden />
           <span>设置</span>
           {updateQuery.data?.update_available ? <span className="update-dot" /> : null}
@@ -362,7 +388,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
           tasks={tasks}
           onClose={() => setPaletteOpen(false)}
           onOpenTask={setTaskID}
-          onOpenCapture={() => navigate("/capture")}
+          onOpenCapture={() => window.requestAnimationFrame(openCapture)}
           onOpenSettings={() => navigate("/settings")}
         />
       ) : null}

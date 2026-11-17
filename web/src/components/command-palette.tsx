@@ -137,14 +137,11 @@ export function CommandPalette({
                 <span className="command-result-main">
                   {task.project ? (
                     <ProjectDot color={task.project.color} size="small" />
-                  ) : (
-                    <span className="project-dot project-dot-small color-ink" aria-hidden />
-                  )}
+                  ) : null}
                   <span>
                     <strong>{task.title}</strong>
                     <small>
-                      {task.project?.name ?? "未分类"}
-                      {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
+                      {[task.project?.name, task.due_at ? formatDate(task.due_at) : ""].filter(Boolean).join(" · ")}
                     </small>
                   </span>
                 </span>
