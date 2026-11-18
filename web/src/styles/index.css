@@ -2595,6 +2595,18 @@ dialog[open] .dialog-panel {
     height: 2.75rem;
   }
 
+  .task-card {
+    align-items: start;
+  }
+
+  .task-card-controls {
+    flex-direction: row;
+    align-self: start;
+    justify-content: flex-end;
+    gap: 0;
+    min-width: 0;
+  }
+
   .task-status-select {
     width: 2.75rem;
   }
