@@ -22,6 +22,8 @@ import { ChevronDown, Plus, Search } from "lucide-react";
 import {
   api,
   errorMessage,
+  type Project,
+  type Tag,
   type Task,
   type TaskStatus,
   type TasksResponse,
@@ -41,6 +43,8 @@ const statusOrder: TaskStatus[] = ["inbox", "todo", "doing", "review", "done"];
 
 interface BoardProps {
   tasks: Task[];
+  projects: Project[];
+  tags: Tag[];
   filter: BoardFilter;
   query: string;
   onOpenTask: (taskID: number) => void;
@@ -52,6 +56,8 @@ interface BoardProps {
 
 export function Board({
   tasks,
+  projects,
+  tags,
   filter,
   query,
   onOpenTask,
@@ -281,7 +287,7 @@ export function Board({
       <div className={`board-composer-dock ${composerFocused ? "board-composer-dock-focused" : ""}`} onClick={(event) => {
         if (event.target === event.currentTarget && !window.getSelection()?.toString()) composerRef.current?.focus();
       }}>
-        <CaptureComposer text={captureText} onTextChange={onCaptureTextChange} inputRef={composerRef} onFocusChange={setComposerFocused} />
+        <CaptureComposer text={captureText} onTextChange={onCaptureTextChange} inputRef={composerRef} projects={projects} tags={tags} onFocusChange={setComposerFocused} />
       </div>
     </section>
   );

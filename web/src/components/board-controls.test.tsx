@@ -5,14 +5,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { Board } from "./board";
 import type { TasksResponse } from "../lib/api";
-import { json, renderWithClient, task } from "../test/fixtures";
+import { json, project, renderWithClient, tag, task } from "../test/fixtures";
 
 afterEach(() => vi.unstubAllGlobals());
 
 function TestBoard({ onOpen = vi.fn() }: { onOpen?: (id: number) => void }) {
   const [text, setText] = useState("");
   const query = useQuery<TasksResponse>({ queryKey: ["tasks"], queryFn: async () => ({ tasks: [task()], next_cursor: null }), initialData: { tasks: [task()], next_cursor: null }, enabled: false });
-  return <Board tasks={query.data.tasks} filter={{ kind: "all" }} query="" onOpenTask={onOpen} onOpenPalette={vi.fn()} onClearFilter={vi.fn()} captureText={text} onCaptureTextChange={setText} />;
+  return <Board tasks={query.data.tasks} projects={[project]} tags={[tag]} filter={{ kind: "all" }} query="" onOpenTask={onOpen} onOpenPalette={vi.fn()} onClearFilter={vi.fn()} captureText={text} onCaptureTextChange={setText} />;
 }
 
 it("moves a task via its status control and restores the previous state on failure", async () => {

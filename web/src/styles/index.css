@@ -1480,10 +1480,30 @@ dialog[open] .dialog-panel {
 .capture-composer textarea:focus { border: 0; outline: none; box-shadow: none; }
 .composer-send { display: grid; width: 2.2rem; height: 2.2rem; flex: 0 0 auto; place-items: center; border: 0; border-radius: 999px; padding: 0; background: var(--accent); color: var(--accent-contrast); }
 .composer-send:disabled { background: var(--line); color: var(--faint); }
+.composer-tools { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; padding-top: 0.4rem; }
+.composer-tool { position: relative; }
+.composer-chip { display: inline-flex; height: 1.65rem; align-items: center; gap: 0.26rem; border: 1px solid var(--line); border-radius: 999px; padding: 0 0.5rem; background: transparent; color: var(--muted); font-size: 0.7rem; line-height: 1; transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out), color 150ms var(--ease-out); }
+.composer-chip > svg:first-child { color: var(--faint); }
+.composer-chip > span { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-chip-active { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); background: var(--accent-soft); color: var(--accent); }
+.composer-chip-active > svg:first-child { color: var(--accent); }
+.composer-chip[aria-expanded="true"] { border-color: var(--accent); background: var(--surface); color: var(--ink); }
+.composer-menu { position: absolute; z-index: 40; bottom: calc(100% + 0.35rem); left: 0; display: grid; min-width: 11rem; max-height: 15rem; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-md); padding: 0.25rem; background: var(--surface-raised); box-shadow: var(--shadow-float); animation: menu-in 140ms var(--ease-out); }
+.composer-menu-right { right: 0; left: auto; }
+.composer-menu-item { display: flex; min-height: 1.9rem; align-items: center; gap: 0.4rem; border: 0; border-radius: var(--radius-sm); padding: 0.28rem 0.45rem; background: transparent; color: var(--ink); font-size: 0.76rem; text-align: left; }
+.composer-menu-item:disabled { opacity: 0.45; }
+.composer-menu-item[aria-checked="true"] { background: var(--accent-soft); color: var(--accent); }
+.composer-menu-marker { display: grid; width: 0.95rem; height: 0.95rem; flex: 0 0 auto; place-items: center; color: var(--accent); }
+.composer-menu-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-menu-hint { color: var(--faint); font-size: 0.64rem; }
+.composer-menu-empty { margin: 0; padding: 0.45rem 0.5rem; color: var(--faint); font-size: 0.72rem; }
+.composer-menu-clear { color: var(--muted); }
+.composer-date-field { display: grid; gap: 0.25rem; border-top: 1px solid var(--line); margin-top: 0.2rem; padding: 0.4rem 0.45rem 0.2rem; color: var(--muted); font-size: 0.66rem; }
+.composer-date-field input { width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.25rem 0.3rem; background: var(--surface); color: var(--ink); font-size: 0.72rem; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(3px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 0.7rem; padding-top: 0.35rem; color: var(--muted); font-size: 0.68rem; }
 .composer-help { display: inline-flex; align-items: center; gap: 0.3rem; border: 0; padding: 0.2rem 0; background: transparent; color: var(--muted); font-size: inherit; }
 .composer-syntax { margin: 0.6rem 0 0; border-top: 1px solid var(--line); padding-top: 0.6rem; color: var(--muted); font-size: 0.75rem; line-height: 1.65; animation: content-in 160ms var(--ease-out); }
-.composer-preview { display: flex; flex-wrap: wrap; gap: 0.4rem 0.65rem; padding-top: 0.35rem; color: var(--accent); font-size: 0.72rem; }
 .loading-icon { animation: loading-spin 900ms linear infinite; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 @keyframes content-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -2415,6 +2435,11 @@ dialog[open] .dialog-panel {
 }
 
 @media (max-width: 640px) {
+  .composer-menu-right {
+    right: auto;
+    left: 0;
+  }
+
   .board-header h1 {
     font-size: 2rem;
   }

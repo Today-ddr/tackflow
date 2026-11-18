@@ -151,7 +151,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
   const mobileTitle = isSettings ? "设置" : filterLabel || "看板";
 
   if (isCapture) {
-    return <CapturePage onBack={() => navigate("/")} text={captureText} onTextChange={setCaptureText} />;
+    return <CapturePage onBack={() => navigate("/")} text={captureText} onTextChange={setCaptureText} projects={projects} tags={tags} />;
   }
 
   return (
@@ -348,6 +348,8 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
         ) : (
           <Board
             tasks={tasks}
+            projects={projects}
+            tags={tags}
             filter={filter}
             query={query}
             onOpenTask={setTaskID}
