@@ -26,6 +26,7 @@ export function Dialog({
   footer,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const titleID = useId();
 
   useEffect(() => {
@@ -34,11 +35,24 @@ export function Dialog({
       return;
     }
     if (open && !dialog.open) {
+      restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       dialog.showModal();
     }
     if (!open && dialog.open) {
       dialog.close();
+      const element = restoreFocusRef.current;
+      if (element && document.contains(element)) {
+        window.requestAnimationFrame(() => element.focus());
+      }
     }
+    return () => {
+      if (!dialog.open) return;
+      dialog.close();
+      const element = restoreFocusRef.current;
+      if (element && document.contains(element)) {
+        window.requestAnimationFrame(() => element.focus());
+      }
+    };
   }, [open]);
 
   return (

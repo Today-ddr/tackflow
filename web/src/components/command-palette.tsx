@@ -24,6 +24,7 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const needle = query.trim().toLowerCase();
 
   const results = useMemo(() => {
@@ -37,7 +38,14 @@ export function CommandPalette({
   }, [needle, tasks]);
 
   useEffect(() => {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     inputRef.current?.focus();
+    return () => {
+      const element = restoreFocusRef.current;
+      if (element && document.contains(element)) {
+        window.requestAnimationFrame(() => element.focus());
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -46,6 +54,9 @@ export function CommandPalette({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229) {
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
@@ -57,6 +68,17 @@ export function CommandPalette({
       if (event.key === "ArrowUp") {
         event.preventDefault();
         setSelected((value) => Math.max(value - 1, 0));
+      }
+      if (event.key === "Tab") {
+        const focusable = Array.from(
+          document.querySelectorAll<HTMLElement>('.command-palette button, .command-palette input'),
+        ).filter((element) => !element.hasAttribute("disabled"));
+        if (focusable.length > 0) {
+          event.preventDefault();
+          const current = focusable.indexOf(document.activeElement as HTMLElement);
+          const next = focusable[(current + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length];
+          next?.focus();
+        }
       }
       if (event.key === "Enter" && results[selected]) {
         event.preventDefault();

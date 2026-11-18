@@ -7,7 +7,6 @@ import {
   LogOut,
   RefreshCw,
   RotateCcw,
-  ShieldCheck,
   Trash2,
   UploadCloud,
 } from "lucide-react";
@@ -75,14 +74,9 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
       <header className="settings-header">
         <div>
           <h1>设置</h1>
-          <p>账户、连接与数据管理。</p>
         </div>
         <div className="settings-identity">
-          <span className="avatar">{me.user.username.slice(0, 1).toUpperCase()}</span>
-          <div>
-            <strong>{me.user.username}</strong>
-            <small>{me.auth_kind === "session" ? "网页会话" : "API 令牌"}</small>
-          </div>
+          <strong>{me.user.username}</strong>
         </div>
       </header>
 
@@ -92,6 +86,7 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
             key={item.id}
             className={tab === item.id ? "settings-tab settings-tab-active" : "settings-tab"}
             type="button"
+            aria-current={tab === item.id ? "page" : undefined}
             onClick={() => navigate(item.path)}
           >
             {item.label}
@@ -101,6 +96,24 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
           </button>
         ))}
       </nav>
+      <label className="settings-mobile-tab">
+        <span className="sr-only">设置页面</span>
+        <select
+          className="settings-select"
+          aria-label="设置页面"
+          value={tab}
+          onChange={(event) => {
+            const nextTab = tabs.find((item) => item.id === event.target.value);
+            if (nextTab) navigate(nextTab.path);
+          }}
+        >
+          {tabs.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}{item.id === "update" && updateQuery.data?.update_available ? " · 有新版本" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="settings-content">
         {tab === "general" ? (
@@ -112,11 +125,10 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
               void queryClient.invalidateQueries({ queryKey: ["update-status"] });
             }}
             notify={notify}
-            onLogout={onLogout}
           />
         ) : null}
         {tab === "account" ? (
-          <AccountSettings me={me} onLogout={onLogout} notify={notify} />
+          <AccountSettings onLogout={onLogout} notify={notify} />
         ) : null}
         {tab === "connections" ? <AgentConnections /> : null}
         {tab === "organize" ? <OrganizeSettings /> : null}
@@ -138,8 +150,6 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
       </div>
 
       <div className="settings-footer-note">
-        <ShieldCheck size={15} aria-hidden />
-        单用户 · SQLite · 数据留在自己的服务器
         <button type="button" onClick={onLogout}>
           <LogOut size={14} aria-hidden />
           退出登录
@@ -154,13 +164,11 @@ function GeneralSettings({
   settingsLoading,
   onSaved,
   notify,
-  onLogout,
 }: {
   settings: Settings | undefined;
   settingsLoading: boolean;
   onSaved: () => void;
   notify: (message: string, tone?: "success" | "error" | "info") => void;
-  onLogout: () => void;
 }) {
   const [theme, setThemeState] = useState<Theme>(storedTheme());
   const mutation = useMutation({
@@ -181,7 +189,6 @@ function GeneralSettings({
       <section className="settings-card">
         <div className="settings-card-heading">
           <h2>主题</h2>
-          <span className="settings-card-mark">Aa</span>
         </div>
         <p className="settings-copy">保存在这台设备，不跟随服务器。</p>
         <div className="segmented-control">
@@ -223,27 +230,14 @@ function GeneralSettings({
         <p className="settings-meta">时区：{settings?.timezone ?? "Asia/Shanghai"}</p>
       </section>
 
-      <section className="settings-card settings-card-wide">
-        <div className="settings-card-heading">
-          <h2>当前会话</h2>
-          <Laptop size={18} aria-hidden />
-        </div>
-        <p className="settings-copy">手机和桌面共用同一份任务。</p>
-        <Button variant="quiet" type="button" onClick={onLogout}>
-          <LogOut size={15} aria-hidden />
-          退出当前会话
-        </Button>
-      </section>
     </div>
   );
 }
 
 function AccountSettings({
-  me,
   onLogout,
   notify,
 }: {
-  me: Me;
   onLogout: () => void;
   notify: (message: string, tone?: "success" | "error" | "info") => void;
 }) {
@@ -349,15 +343,12 @@ function AccountSettings({
                 >
                   <Trash2 size={15} />
                 </button>
-              ) : (
-                <span className="session-current-mark">当前</span>
-              )}
+              ) : null}
             </div>
           ))}
           {sessionsQuery.isPending ? <p className="muted-copy">正在读取登录设备…</p> : null}
         </div>
       </section>
-      <p className="settings-meta">当前账户：{me.user.username}</p>
       <PasskeySettings />
     </div>
   );

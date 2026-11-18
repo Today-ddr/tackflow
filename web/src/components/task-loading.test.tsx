@@ -76,6 +76,19 @@ describe("all task pages", () => {
   });
 });
 
+it("opens the narrow-screen filter and applies a project without losing the board", async () => {
+  mockPages();
+  const navigate = vi.fn();
+  renderWithClient(<AppShell me={me} path="/" navigate={navigate} onLogout={vi.fn()} />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "筛选" }));
+  const dialog = await screen.findByRole("dialog", { name: "筛选看板" });
+  await user.click(within(dialog).getByRole("button", { name: "Codeg" }));
+  expect(navigate).toHaveBeenCalledWith("/");
+  expect(screen.getByRole("heading", { name: "@Codeg" })).toBeInTheDocument();
+  expect(screen.queryByRole("dialog", { name: "筛选看板" })).not.toBeInTheDocument();
+});
+
 it("combines search prefixes with text and accepts quoted metadata names", () => {
   const tasks = [task(), task({ id: 2, status: "done" }), task({ id: 3, project: { ...project, name: "My Project" }, tags: [] })];
   expect(filterTasks(tasks, { kind: "all" }, "status:todo tag:BUG project:codeg 登录").map((item) => item.id)).toEqual([1]);

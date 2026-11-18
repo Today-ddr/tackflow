@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -64,6 +64,7 @@ export function Board({
   const { notify } = useToast();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
+  const [mobileStatus, setMobileStatus] = useState<TaskStatus>("inbox");
   const [composerFocused, setComposerFocused] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const lastDragEnd = useRef(0);
@@ -85,6 +86,14 @@ export function Board({
       (status) => status !== "review" || visibleTasks.some((task) => task.status === "review"),
     );
   }, [filter.kind, visibleTasks]);
+
+  useEffect(() => {
+    if (filter.kind === "inbox") {
+      setMobileStatus("inbox");
+    } else if (!statuses.includes(mobileStatus)) {
+      setMobileStatus(statuses[0] ?? "inbox");
+    }
+  }, [filter.kind, mobileStatus, statuses]);
 
   const moveMutation = useMutation({
     mutationFn: (input: { id: number; status: TaskStatus; position?: number }) =>
@@ -214,6 +223,23 @@ export function Board({
         </div>
       </header>
 
+      {filter.kind !== "inbox" ? (
+        <nav className="board-mobile-statuses" aria-label="手机状态筛选">
+          {statuses.map((status) => (
+            <button
+              key={status}
+              className={mobileStatus === status ? "board-mobile-status-active" : ""}
+              type="button"
+              aria-pressed={mobileStatus === status}
+              onClick={() => setMobileStatus(status)}
+            >
+              <span>{statusLabel(status)}</span>
+              <span>{visibleTasks.filter((task) => task.status === status).length}</span>
+            </button>
+          ))}
+        </nav>
+      ) : null}
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -239,6 +265,7 @@ export function Board({
                   if (!moveMutation.isPending) moveMutation.mutate({ id, status: targetStatus });
                 }}
                 movePending={moveMutation.isPending}
+                mobileHidden={filter.kind !== "inbox" && mobileStatus !== status}
               />
             );
           })}
@@ -268,6 +295,7 @@ function BoardColumn({
   onOpenTask,
   onStatusChange,
   movePending,
+  mobileHidden,
 }: {
   status: TaskStatus;
   tasks: Task[];
@@ -276,6 +304,7 @@ function BoardColumn({
   onOpenTask: (taskID: number) => void;
   onStatusChange: (taskID: number, status: TaskStatus) => void;
   movePending: boolean;
+  mobileHidden: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
@@ -284,7 +313,7 @@ function BoardColumn({
   return (
     <section
       ref={setNodeRef}
-      className={`board-column board-column-${status} ${isOver ? "board-column-over" : ""}`}
+      className={`board-column board-column-${status} ${isOver ? "board-column-over" : ""} ${mobileHidden ? "board-column-mobile-hidden" : ""}`}
       aria-label={statusLabel(status)}
     >
       <header className="column-header">

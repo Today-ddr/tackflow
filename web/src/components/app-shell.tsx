@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Check,
+  Filter,
+  Folder,
+  Hash,
   Inbox,
   LayoutGrid,
   LogOut,
@@ -28,6 +32,7 @@ import { ProjectDialog } from "./project-dialog";
 import { ProjectDot } from "./project-dot";
 import { SettingsPage } from "./settings-page";
 import { TaskSheet } from "./task-sheet";
+import { Dialog } from "./ui/dialog";
 
 interface AppShellProps {
   me: Me;
@@ -43,6 +48,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [taskID, setTaskID] = useState<number | null>(null);
   const [projectOpen, setProjectOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [captureText, setCaptureText] = useState("");
 
   const tasksQuery = useQuery<TasksResponse>({
@@ -123,6 +129,7 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
     if (path !== "/") {
       setPaletteOpen(false);
       setTaskID(null);
+      setMobileFilterOpen(false);
     }
   }, [path]);
 
@@ -303,6 +310,12 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
             <button className="icon-button" type="button" onClick={() => setPaletteOpen(true)} aria-label="搜索">
               <Search size={18} />
             </button>
+            {!isSettings ? (
+              <button className="icon-button" type="button" onClick={() => setMobileFilterOpen(true)} aria-label="筛选">
+                <Filter size={18} />
+                {filter.kind !== "all" ? <span className="update-dot" aria-hidden="true" /> : null}
+              </button>
+            ) : null}
             <button className="icon-button" type="button" onClick={() => navigate("/settings")} aria-label="设置">
               <Settings size={18} />
               {updateQuery.data?.update_available ? <span className="update-dot" /> : null}
@@ -392,6 +405,19 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
           onOpenSettings={() => navigate("/settings")}
         />
       ) : null}
+      <MobileFilterDialog
+        open={mobileFilterOpen}
+        filter={filter}
+        projects={projects}
+        tags={tags}
+        onClose={() => setMobileFilterOpen(false)}
+        onSelect={(nextFilter) => {
+          setFilter(nextFilter);
+          setQuery("");
+          setMobileFilterOpen(false);
+          navigate("/");
+        }}
+      />
       {taskID !== null ? (
         <TaskSheet taskID={taskID} projects={projects} onClose={() => setTaskID(null)} />
       ) : null}
@@ -410,5 +436,54 @@ export function AppShell({ me, path, navigate, onLogout }: AppShellProps) {
       />
       {filterLabel ? <span className="sr-only">当前筛选：{filterLabel}</span> : null}
     </div>
+  );
+}
+
+function MobileFilterDialog({
+  open,
+  filter,
+  projects,
+  tags,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  filter: BoardFilter;
+  projects: Project[];
+  tags: Tag[];
+  onClose: () => void;
+  onSelect: (filter: BoardFilter) => void;
+}) {
+  return (
+    <Dialog open={open} title="筛选看板" subtitle="选择一个范围查看任务" onClose={onClose} className="mobile-filter-dialog">
+      <div className="mobile-filter-list">
+        <button className={`mobile-filter-item ${filter.kind === "all" ? "mobile-filter-item-active" : ""}`} type="button" onClick={() => onSelect({ kind: "all" })}>
+          <LayoutGrid size={17} aria-hidden />
+          <span>全部任务</span>
+          {filter.kind === "all" ? <Check size={16} aria-hidden /> : null}
+        </button>
+        <button className={`mobile-filter-item ${filter.kind === "inbox" ? "mobile-filter-item-active" : ""}`} type="button" onClick={() => onSelect({ kind: "inbox" })}>
+          <Inbox size={17} aria-hidden />
+          <span>收件箱</span>
+          {filter.kind === "inbox" ? <Check size={16} aria-hidden /> : null}
+        </button>
+        {projects.length > 0 ? <p className="mobile-filter-label">项目</p> : null}
+        {projects.map((project) => (
+          <button className={`mobile-filter-item ${filter.kind === "project" && filter.id === project.id ? "mobile-filter-item-active" : ""}`} type="button" key={project.id} onClick={() => onSelect({ kind: "project", id: project.id, name: project.name, color: project.color })}>
+            <Folder size={17} aria-hidden />
+            <span>{project.name}</span>
+            {filter.kind === "project" && filter.id === project.id ? <Check size={16} aria-hidden /> : null}
+          </button>
+        ))}
+        {tags.length > 0 ? <p className="mobile-filter-label">标签</p> : null}
+        {tags.slice(0, 20).map((tag) => (
+          <button className={`mobile-filter-item ${filter.kind === "tag" && filter.id === tag.id ? "mobile-filter-item-active" : ""}`} type="button" key={tag.id} onClick={() => onSelect({ kind: "tag", id: tag.id, name: tag.name, color: tag.color })}>
+            <Hash size={17} aria-hidden />
+            <span>{tag.name}</span>
+            {filter.kind === "tag" && filter.id === tag.id ? <Check size={16} aria-hidden /> : null}
+          </button>
+        ))}
+      </div>
+    </Dialog>
   );
 }
