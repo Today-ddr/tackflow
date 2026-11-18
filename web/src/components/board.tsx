@@ -71,12 +71,18 @@ export function Board({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>("inbox");
+  const [entering, setEntering] = useState(true);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const lastDragEnd = useRef(0);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEntering(false), 360);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const visibleTasks = useMemo(
     () => filterTasks(tasks, filter, query),
@@ -200,7 +206,7 @@ export function Board({
   };
 
   return (
-    <section className="board-page" aria-label="任务看板" onClick={(event) => {
+    <section className={`board-page ${entering ? "board-page-entering" : ""}`} aria-label="任务看板" onClick={(event) => {
       if (Date.now() - lastDragEnd.current < 250 || activeTask || window.getSelection()?.toString()) return;
       const target = event.target;
       if (target instanceof HTMLElement && !target.closest("button, a, input, textarea, select, form, .task-card, .column-header, .board-header")) composerRef.current?.focus();
