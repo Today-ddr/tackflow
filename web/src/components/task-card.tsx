@@ -1,9 +1,10 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, Circle, CircleCheck, CircleDot, CircleEllipsis, GripVertical, Inbox, Sparkles } from "lucide-react";
+import { CalendarDays, GripVertical, Sparkles } from "lucide-react";
 import type { Task, TaskStatus } from "../lib/api";
 import { formatDate, isOverdue, priorityLabel, statusLabel } from "../lib/format";
 import { ProjectDot } from "./project-dot";
+import { StatusIcon } from "./status-icon";
 
 interface TaskCardProps {
   task: Task;
@@ -14,11 +15,10 @@ interface TaskCardProps {
 
 export function TaskCard({ task, onOpen, onStatusChange, pending = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, data: { task }, disabled: pending });
-  const StatusIcon = { inbox: Inbox, todo: Circle, doing: CircleDot, review: CircleEllipsis, done: CircleCheck }[task.status];
   return <article ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={`task-card ${isDragging ? "task-card-dragging" : ""}`}>
     <button className="task-card-open" type="button" onClick={() => onOpen(task.id)} aria-label={`打开任务 ${task.title}`}><TaskCardBody task={task} /></button>
     <div className="task-card-controls">
-      <span className={`task-status-control task-status-${task.status}`} title={`${statusLabel(task.status)} · 点击更改状态`}><StatusIcon size={17} aria-hidden /><select className="task-status-select" aria-label={`更改状态：${task.title}`} value={task.status} disabled={pending} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}>{(["inbox", "todo", "doing", "review", "done"] as TaskStatus[]).map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></span>
+      <span className={`task-status-control task-status-${task.status}`} title={`${statusLabel(task.status)} · 点击更改状态`}><StatusIcon status={task.status} size={17} /><select className="task-status-select" aria-label={`更改状态：${task.title}`} value={task.status} disabled={pending} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}>{(["inbox", "todo", "doing", "review", "done"] as TaskStatus[]).map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></span>
       <button ref={setActivatorNodeRef} className="task-drag-handle" type="button" disabled={pending} {...attributes} {...listeners} aria-label={`拖动任务 ${task.title}`} title="拖动排序；空格选中后用方向键移动，Esc 取消"><GripVertical size={16} aria-hidden /></button>
     </div>
   </article>;

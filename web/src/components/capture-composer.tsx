@@ -8,7 +8,6 @@ import {
   Flag,
   Folder,
   Hash,
-  HelpCircle,
   LoaderCircle,
 } from "lucide-react";
 import {
@@ -53,10 +52,9 @@ export function CaptureComposer({
 }: CaptureComposerProps) {
   const client = useQueryClient();
   const { notify } = useToast();
-  const [helpOpen, setHelpOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [openMenu, setOpenMenu] = useState<ComposerMenu>(null);
-  const helpID = useId();
+  const syntaxID = useId();
   const toolsRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const preview = previewCapture(text);
@@ -139,7 +137,7 @@ export function CaptureComposer({
     }
   }}>
     <div className="composer-input-row">
-      <textarea ref={inputRef} aria-label="记一笔" placeholder="记一笔，先放进收件箱…" rows={1} value={text} readOnly={mutation.isPending} enterKeyHint="enter" onChange={(event) => { onTextChange(event.target.value); mutation.reset(); }} onKeyDown={(event) => {
+      <textarea ref={inputRef} aria-label="记一笔" aria-describedby={syntaxID} title="支持 #标签、@项目、!p0–p3、^日期；⌘/Ctrl + Enter 保存" placeholder="记一笔，先放进收件箱…" rows={1} value={text} readOnly={mutation.isPending} enterKeyHint="enter" onChange={(event) => { onTextChange(event.target.value); mutation.reset(); }} onKeyDown={(event) => {
         if (event.nativeEvent.isComposing || event.keyCode === 229) return;
         if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); submit(); }
       }} />
@@ -200,8 +198,7 @@ export function CaptureComposer({
         </div> : null}
       </div>
     </div>
-    <div className="composer-footer"><button className="composer-help" type="button" aria-expanded={helpOpen} aria-controls={helpID} onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={14} aria-hidden />输入语法</button><span>⌘ / Ctrl ↵ 保存</span></div>
-    {helpOpen ? <p className="composer-syntax" id={helpID}>可直接输入 #标签 · @已有项目 · !p0–p3 优先级 · ^今天 / ^明天 / ^日期，也可用上方按钮选择。第一行是标题，后续内容作为备注。</p> : null}
+    <p className="sr-only" id={syntaxID}>可直接输入 #标签、@已有项目、!p0 到 !p3 优先级、^今天或^日期；第一行是标题，后续内容作为备注。</p>
     {mutation.error ? <p className="form-error" role="alert">{errorMessage(mutation.error)}</p> : null}
   </form>;
 }

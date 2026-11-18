@@ -17,7 +17,16 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Plus, Search } from "lucide-react";
+import {
+  ChevronDown,
+  Folder,
+  Hash,
+  Inbox,
+  LayoutGrid,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
 
 import {
   api,
@@ -35,6 +44,7 @@ import {
   type BoardFilter,
 } from "../lib/format";
 import { TaskCard, TaskCardBody } from "./task-card";
+import { StatusIcon } from "./status-icon";
 import { useToast } from "./toast";
 import { invalidateTaskData } from "../app/task-cache";
 import { CaptureComposer } from "./capture-composer";
@@ -215,9 +225,13 @@ export function Board({
       <header className="board-header">
         <div>
           <div className="board-title-line">
-            <h1>{titleForFilter(filter)}</h1>
+            <h1>
+              <BoardTitleIcon filter={filter} />
+              {titleForFilter(filter)}
+            </h1>
             {filter.kind === "project" || filter.kind === "tag" ? (
               <button className="text-button" type="button" onClick={onClearFilter}>
+                <X size={13} aria-hidden />
                 清除筛选
               </button>
             ) : null}
@@ -245,6 +259,7 @@ export function Board({
               aria-pressed={mobileStatus === status}
               onClick={() => setMobileStatus(status)}
             >
+              <StatusIcon status={status} size={14} />
               <span>{statusLabel(status)}</span>
               <span>{visibleTasks.filter((task) => task.status === status).length}</span>
             </button>
@@ -302,6 +317,18 @@ export function Board({
   );
 }
 
+function BoardTitleIcon({ filter }: { filter: BoardFilter }) {
+  const Icon =
+    filter.kind === "inbox"
+      ? Inbox
+      : filter.kind === "project"
+        ? Folder
+        : filter.kind === "tag"
+          ? Hash
+          : LayoutGrid;
+  return <Icon className="board-title-icon" size={18} aria-hidden />;
+}
+
 function BoardColumn({
   status,
   tasks,
@@ -344,15 +371,25 @@ function BoardColumn({
           onClick={status === "done" ? onToggle : undefined}
           disabled={status !== "done"}
         >
+          <StatusIcon status={status} size={14} />
           <span>{statusLabel(status)}</span>
           <span className="column-count">{tasks.length}</span>
           {status === "done" && tasks.length > 0 ? (
             <ChevronDown
               size={14}
-              className={collapsed ? "chevron-collapsed" : ""}
+              className={`column-chevron ${collapsed ? "chevron-collapsed" : ""}`.trim()}
               aria-hidden
             />
           ) : null}
+        </button>
+        <button
+          className="column-add"
+          type="button"
+          aria-label={`在${statusLabel(status)}新建任务`}
+          title={`在${statusLabel(status)}新建任务`}
+          onClick={onStartCreating}
+        >
+          <Plus size={14} aria-hidden />
         </button>
       </header>
       {!collapsed ? (
@@ -376,7 +413,6 @@ function BoardColumn({
             <InlineComposer
               status={status}
               open={creating}
-              onOpen={onStartCreating}
               onClose={onStopCreating}
             />
           </div>
@@ -389,12 +425,10 @@ function BoardColumn({
 function InlineComposer({
   status,
   open,
-  onOpen,
   onClose,
 }: {
   status: TaskStatus;
   open: boolean;
-  onOpen: () => void;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
@@ -421,12 +455,7 @@ function InlineComposer({
   });
 
   if (!open) {
-    return (
-      <button className="add-task-button" type="button" onClick={onOpen}>
-        <Plus size={14} aria-hidden />
-        新建
-      </button>
-    );
+    return null;
   }
 
   return (
@@ -455,6 +484,17 @@ function InlineComposer({
       />
       <button type="submit" disabled={!title.trim() || createMutation.isPending}>
         {createMutation.isPending ? "…" : "保存"}
+      </button>
+      <button
+        className="inline-composer-cancel"
+        type="button"
+        aria-label="取消新建"
+        onClick={() => {
+          setTitle("");
+          onClose();
+        }}
+      >
+        <X size={13} aria-hidden />
       </button>
     </form>
   );

@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Copy, Download, RefreshCw } from "lucide-react";
+import { Copy, Download, RefreshCw, ScrollText } from "lucide-react";
 import { api, errorMessage } from "../lib/api";
 import { formatDateTime } from "../lib/format";
 import { QueryFeedback } from "./query-feedback";
+import { SettingsHeading } from "./settings-heading";
 
 interface LogEntry {
   time: string;
@@ -61,7 +62,7 @@ export function LogSettings() {
   };
 
   return <section className="log-settings" aria-labelledby="logs-title">
-    <div className="settings-card-heading"><h2 id="logs-title">诊断日志</h2><button className="text-button" type="button" disabled={logs.isFetching} onClick={() => { setCopied(false); void logs.refetch(); }}><RefreshCw size={14} aria-hidden />刷新</button></div>
+    <SettingsHeading icon={ScrollText} title="诊断日志" titleID="logs-title"><button className="text-button" type="button" disabled={logs.isFetching} onClick={() => { setCopied(false); void logs.refetch(); }}><RefreshCw size={14} aria-hidden />刷新</button></SettingsHeading>
     <p className="settings-copy">记录服务请求、错误和维护事件，按时间倒序。复制 JSONL 可直接交给 AI 排查；请求 ID 可关联页面报错。最多保留 3 MiB，当前可查最近 500 条。</p>
     <form className="log-filters" onSubmit={(event) => { event.preventDefault(); setCopied(false); setFilter({ level, requestID: requestID.trim() }); }}>
       <label>日志级别<select value={level} onChange={(event) => setLevel(event.target.value)}><option value="">全部级别</option><option value="ERROR">错误</option><option value="WARN">警告</option><option value="INFO">信息</option></select></label>

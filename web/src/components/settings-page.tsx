@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Bot,
+  Database,
   Download,
-  KeyRound,
+  Folders,
+  LockKeyhole,
   Laptop,
   LogOut,
+  Palette,
   RefreshCw,
   RotateCcw,
+  ScrollText,
+  SlidersHorizontal,
   Trash2,
   UploadCloud,
+  UserRound,
+  Webhook,
 } from "lucide-react";
 
 import {
@@ -32,6 +40,7 @@ import { PasskeySettings } from "./passkey-settings";
 import { IntegrationsSettings } from "./integrations-settings";
 import { AgentConnections } from "./agent-connections";
 import { LogSettings } from "./log-settings";
+import { SettingsHeading } from "./settings-heading";
 
 interface SettingsPageProps {
   path: string;
@@ -42,16 +51,16 @@ interface SettingsPageProps {
 
 type SettingsTab = "general" | "account" | "connections" | "update" | "data" | "organize" | "trash" | "integrations" | "logs";
 
-const tabs: Array<{ id: SettingsTab; label: string; path: string }> = [
-  { id: "general", label: "常规", path: "/settings" },
-  { id: "account", label: "账户", path: "/settings/account" },
-  { id: "connections", label: "Agent 连接", path: "/settings/connections" },
-  { id: "organize", label: "项目与标签", path: "/settings/organize" },
-  { id: "trash", label: "回收站", path: "/settings/trash" },
-  { id: "integrations", label: "集成", path: "/settings/integrations" },
-  { id: "update", label: "更新", path: "/settings/update" },
-  { id: "data", label: "数据", path: "/settings/data" },
-  { id: "logs", label: "日志", path: "/settings/logs" },
+const tabs: Array<{ id: SettingsTab; label: string; path: string; icon: typeof Bot }> = [
+  { id: "general", label: "常规", path: "/settings", icon: SlidersHorizontal },
+  { id: "account", label: "账户", path: "/settings/account", icon: UserRound },
+  { id: "connections", label: "Agent 连接", path: "/settings/connections", icon: Bot },
+  { id: "organize", label: "项目与标签", path: "/settings/organize", icon: Folders },
+  { id: "trash", label: "回收站", path: "/settings/trash", icon: Trash2 },
+  { id: "integrations", label: "集成", path: "/settings/integrations", icon: Webhook },
+  { id: "update", label: "更新", path: "/settings/update", icon: RefreshCw },
+  { id: "data", label: "数据", path: "/settings/data", icon: Database },
+  { id: "logs", label: "日志", path: "/settings/logs", icon: ScrollText },
 ];
 
 export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps) {
@@ -75,26 +84,27 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
         <div>
           <h1>设置</h1>
         </div>
-        <div className="settings-identity">
-          <strong>{me.user.username}</strong>
-        </div>
       </header>
 
       <nav className="settings-tabs" aria-label="设置分类">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            className={tab === item.id ? "settings-tab settings-tab-active" : "settings-tab"}
-            type="button"
-            aria-current={tab === item.id ? "page" : undefined}
-            onClick={() => navigate(item.path)}
-          >
-            {item.label}
-            {item.id === "update" && updateQuery.data?.update_available ? (
-              <span className="update-dot" aria-label="有新版本" />
-            ) : null}
-          </button>
-        ))}
+        {tabs.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              className={tab === item.id ? "settings-tab settings-tab-active" : "settings-tab"}
+              type="button"
+              aria-current={tab === item.id ? "page" : undefined}
+              onClick={() => navigate(item.path)}
+            >
+              <Icon size={14} aria-hidden />
+              {item.label}
+              {item.id === "update" && updateQuery.data?.update_available ? (
+                <span className="update-dot" aria-label="有新版本" />
+              ) : null}
+            </button>
+          );
+        })}
       </nav>
       <label className="settings-mobile-tab">
         <span className="sr-only">设置页面</span>
@@ -150,6 +160,7 @@ export function SettingsPage({ path, me, navigate, onLogout }: SettingsPageProps
       </div>
 
       <div className="settings-footer-note">
+        <span className="settings-user">{me.user.username}</span>
         <button type="button" onClick={onLogout}>
           <LogOut size={14} aria-hidden />
           退出登录
@@ -187,9 +198,7 @@ function GeneralSettings({
   return (
     <div className="settings-grid">
       <section className="settings-card">
-        <div className="settings-card-heading">
-          <h2>主题</h2>
-        </div>
+        <SettingsHeading icon={Palette} title="主题" />
         <p className="settings-copy">保存在这台设备，不跟随服务器。</p>
         <div className="segmented-control">
           {(["light", "dark", "system"] as Theme[]).map((value) => (
@@ -209,10 +218,7 @@ function GeneralSettings({
       </section>
 
       <section className="settings-card">
-        <div className="settings-card-heading">
-          <h2>更新检查</h2>
-          <RefreshCw size={18} aria-hidden />
-        </div>
+        <SettingsHeading icon={RefreshCw} title="更新检查" />
         <p className="settings-copy">只有点「立即更新」才会重启服务。</p>
         <select
           className="settings-select"
@@ -275,10 +281,7 @@ function AccountSettings({
   return (
     <div className="settings-grid">
       <section className="settings-card">
-        <div className="settings-card-heading">
-          <h2>改密码</h2>
-          <KeyRound size={18} aria-hidden />
-        </div>
+        <SettingsHeading icon={LockKeyhole} title="改密码" />
         <p className="settings-copy">至少 12 位；修改后会退出所有设备。</p>
         <form
           className="form-stack"
@@ -314,10 +317,7 @@ function AccountSettings({
       </section>
 
       <section className="settings-card settings-card-wide">
-        <div className="settings-card-heading">
-          <h2>登录设备</h2>
-          <Laptop size={18} aria-hidden />
-        </div>
+        <SettingsHeading icon={Laptop} title="登录设备" />
         <div className="session-list">
           {sessionsQuery.data?.sessions.map((session) => (
             <div className="session-item" key={session.id}>
@@ -412,10 +412,7 @@ function UpdateSettings({
   return (
     <div className="settings-grid">
       <section className="settings-card settings-card-wide">
-        <div className="settings-card-heading">
-          <h2>版本与更新</h2>
-          <UploadCloud size={18} aria-hidden />
-        </div>
+        <SettingsHeading icon={UploadCloud} title="版本与更新" />
         <div className="version-row">
           <div>
             <span className="version-label">当前版本</span>
@@ -520,10 +517,7 @@ function DataSettings({
   return (
     <div className="settings-grid">
       <section className="settings-card settings-card-wide">
-        <div className="settings-card-heading">
-          <h2>导出与备份</h2>
-          <Download size={18} aria-hidden />
-        </div>
+        <SettingsHeading icon={Download} title="导出与备份" />
         <p className="settings-copy">
           SQLite 是唯一真源。服务器每天 03:00 自动备份到 `data/backups/`，保留 14 天。
         </p>

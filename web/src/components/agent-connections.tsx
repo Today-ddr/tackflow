@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { KeyRound, PlugZap, Plus, RefreshCw, ShieldCheck } from "lucide-react";
 import { api, errorMessage, type APIToken, type Project, type Tag } from "../lib/api";
 import { buildAgentGuide, checkAgentConnection, type AgentConnection, type ConnectionResources } from "../lib/agent-connections";
 import { formatDateTime } from "../lib/format";
@@ -10,6 +11,7 @@ import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { useToast } from "./toast";
+import { SettingsHeading } from "./settings-heading";
 
 const purposes = [
   { value: "read", label: "只读助手", scopes: ["read"], description: "读取任务、分类和导出，用于查询与总结。" },
@@ -77,15 +79,14 @@ export function AgentConnections() {
 
   return <div className="settings-grid agent-connections">
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>Agent 连接</h2></div>
+      <SettingsHeading icon={PlugZap} title="Agent 连接" />
       <p className="settings-copy">每个 Agent 使用独立 Key，可限制权限与资源范围；撤销后立即失效。</p>
       <QueryFeedback pending={connection.isPending} error={connection.error} retry={() => void connection.refetch()} />
       {baseURL ? <div className="connection-address"><span>API 地址</span><code>{baseURL}</code><Button variant="quiet" type="button" onClick={() => setGuideToken(null)}>查看通用说明</Button></div> : null}
-      <p className="settings-meta">使用 REST API；当前没有 MCP endpoint。</p>
     </section>
 
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>API Keys</h2><button className="text-button" type="button" disabled={tokens.isFetching} onClick={() => void tokens.refetch()}>刷新</button></div>
+      <SettingsHeading icon={KeyRound} title="API Keys"><button className="text-button" type="button" disabled={tokens.isFetching} onClick={() => void tokens.refetch()}><RefreshCw size={13} aria-hidden />刷新</button></SettingsHeading>
       <QueryFeedback pending={tokens.isPending} error={tokens.error} retry={() => void tokens.refetch()} />
       {tokens.data?.tokens.length === 0 ? <p className="muted-copy">还没有 API Key。在下方为第一个 Agent 生成一枚。</p> : null}
       {tokens.data?.tokens.length ? <div className="token-table-wrap">
@@ -113,7 +114,7 @@ export function AgentConnections() {
     </section>
 
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>生成 API Key</h2></div>
+      <SettingsHeading icon={KeyRound} title="生成 API Key" />
       <form className="token-create" onSubmit={(event) => { event.preventDefault(); if (resourcesReady && name.trim() && scopes.length && !create.isPending && !revealed) create.mutate(); }}>
         <div className="form-row">
           <div className="field"><label htmlFor="connection-name">名称</label><Input id="connection-name" maxLength={80} required value={name} onChange={(event) => setName(event.target.value)} placeholder="例如：桌面 Agent、iPhone 快捷指令" /></div>
@@ -128,13 +129,13 @@ export function AgentConnections() {
         <fieldset className="resource-scope"><legend>标签范围（可选）</legend><div className="scope-row">{tags.data?.tags.map((tag) => <label className="check-chip" key={tag.id}><input type="checkbox" aria-label={`标签：${tag.name}`} checked={tagIDs.includes(tag.id)} onChange={(event) => setTagIDs((current) => event.target.checked ? [...current, tag.id] : current.filter((id) => id !== tag.id))} />#{tag.name}</label>)}</div>{tags.data?.tags.length === 0 ? <p className="settings-meta">尚无标签。</p> : null}</fieldset>
         <p className="settings-meta">受限 Key 只能使用已有分类；capture 文本需带授权的 @项目 / #标签。Key 无权管理账户、Key、Webhook 或系统更新。</p>
         {create.error ? <p className="form-error" role="alert">{errorMessage(create.error)}</p> : null}
-        <Button type="submit" disabled={!resourcesReady || !name.trim() || !scopes.length || create.isPending || Boolean(revealed)}>{create.isPending ? "生成中…" : "生成 API Key"}</Button>
+        <Button type="submit" disabled={!resourcesReady || !name.trim() || !scopes.length || create.isPending || Boolean(revealed)}><Plus size={15} aria-hidden />{create.isPending ? "生成中…" : "生成 API Key"}</Button>
       </form>
       {revealed ? <SecretNotice key={revealed.secret} secret={revealed.secret} onDismiss={() => { setRevealed(null); setCheckKey(""); check.reset(); }} /> : null}
     </section>
 
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>检查连接</h2></div>
+      <SettingsHeading icon={ShieldCheck} title="检查连接" />
       <p className="settings-copy">仅向当前 Tack 发送一次认证请求，不创建或领取任务。远程 Agent 还需在自己的运行环境中执行说明里的检查命令。</p>
       <form className="form-stack" onSubmit={(event) => { event.preventDefault(); if (checkKey.trim() && !check.isPending) check.mutate(); }}>
         <div className="field"><label htmlFor="connection-check">待检查的 API Key</label><Input id="connection-check" type="password" autoComplete="off" spellCheck={false} disabled={check.isPending} value={checkKey} onChange={(event) => { setCheckKey(event.target.value); check.reset(); }} placeholder="粘贴已保存的 Key；检查后清空" /></div>

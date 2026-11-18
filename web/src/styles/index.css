@@ -148,17 +148,6 @@ select {
   border: 0;
 }
 
-.eyebrow {
-  margin: 0 0 0.55rem;
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.3;
-  text-transform: uppercase;
-}
-
 .muted-copy {
   margin: 0;
   color: var(--muted);
@@ -415,14 +404,6 @@ select {
 .login-form {
   display: grid;
   gap: 0.8rem;
-}
-
-.login-note {
-  margin: 1.8rem 0 0;
-  color: var(--faint);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.04em;
 }
 
 .loading-page {
@@ -734,12 +715,21 @@ select {
 }
 
 .board-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
   font-family: var(--font-serif);
   font-size: 2.25rem;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 1;
+}
+
+.board-title-icon {
+  flex: 0 0 auto;
+  color: var(--muted);
+  stroke-width: 1.6;
 }
 
 .board-summary {
@@ -822,12 +812,16 @@ select {
 }
 
 .column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
   padding: 0.2rem 0.3rem 0.4rem;
 }
 
 .column-title {
   display: flex;
-  width: 100%;
+  min-width: 0;
+  flex: 1;
   align-items: center;
   gap: 0.4rem;
   border: 0;
@@ -837,6 +831,19 @@ select {
   font-size: 0.75rem;
   font-weight: 600;
   text-align: left;
+}
+
+.column-add {
+  display: grid;
+  width: 1.7rem;
+  height: 1.7rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  background: transparent;
+  color: var(--faint);
 }
 
 .column-title:disabled {
@@ -856,9 +863,18 @@ select {
 }
 
 .column-title svg {
-  margin-left: auto;
   color: var(--faint);
   transition: transform 150ms ease-out;
+}
+
+.column-title > svg:first-child {
+  color: var(--muted);
+  stroke-width: 1.7;
+  transition: none;
+}
+
+.column-chevron {
+  margin-left: auto;
 }
 
 .chevron-collapsed {
@@ -886,21 +902,9 @@ select {
   color: var(--accent);
 }
 
-.add-task-button {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 0;
-  border-radius: var(--radius-sm);
-  padding: 0.35rem 0.4rem;
-  background: transparent;
-  color: var(--faint);
-  font-size: 0.65rem;
-  text-align: left;
-}
-
 .inline-composer {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.28rem;
   border: 1px solid var(--accent);
   border-radius: var(--radius-sm);
@@ -909,6 +913,7 @@ select {
 }
 
 .inline-composer input {
+  grid-column: 1 / -1;
   border: 0;
   padding: 0.4rem;
   background: transparent;
@@ -927,6 +932,14 @@ select {
   background: var(--accent);
   color: var(--accent-contrast);
   font-size: 0.65rem;
+}
+
+.inline-composer .inline-composer-cancel {
+  width: 1.5rem;
+  height: 1.5rem;
+  justify-self: center;
+  background: transparent;
+  color: var(--muted);
 }
 
 .inline-composer button:disabled {
@@ -1425,12 +1438,20 @@ dialog[open] .dialog-panel {
 }
 
 .status-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 0.32rem 0.5rem;
   background: transparent;
   color: var(--muted);
   font-size: 0.68rem;
+}
+
+.status-choice > svg {
+  flex: 0 0 auto;
+  stroke-width: 1.7;
 }
 
 .status-choice-active {
@@ -1517,12 +1538,8 @@ dialog[open] .dialog-panel {
 .composer-date-field { display: grid; gap: 0.25rem; border-top: 1px solid var(--line); margin-top: 0.2rem; padding: 0.4rem 0.45rem 0.2rem; color: var(--muted); font-size: 0.66rem; }
 .composer-date-field input { width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.25rem 0.3rem; background: var(--surface); color: var(--ink); font-size: 0.72rem; }
 @keyframes menu-in { from { opacity: 0; transform: translateY(3px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.composer-footer { display: flex; justify-content: space-between; align-items: center; gap: 0.7rem; padding-top: 0.35rem; color: var(--muted); font-size: 0.68rem; }
-.composer-help { display: inline-flex; align-items: center; gap: 0.3rem; border: 0; padding: 0.2rem 0; background: transparent; color: var(--muted); font-size: inherit; }
-.composer-syntax { margin: 0.6rem 0 0; border-top: 1px solid var(--line); padding-top: 0.6rem; color: var(--muted); font-size: 0.75rem; line-height: 1.65; animation: content-in 160ms var(--ease-out); }
 .loading-icon { animation: loading-spin 900ms linear infinite; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
-@keyframes content-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes page-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes column-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes card-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -1692,18 +1709,6 @@ dialog[open] .dialog-panel {
   line-height: 1.5;
 }
 
-.settings-identity {
-  display: flex;
-  align-items: center;
-  padding-top: 0.25rem;
-}
-
-.settings-identity strong {
-  color: var(--muted);
-  font-size: 0.74rem;
-  font-weight: 500;
-}
-
 .settings-tabs {
   display: flex;
   position: relative;
@@ -1715,6 +1720,9 @@ dialog[open] .dialog-panel {
 
 .settings-tab {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   border: 0;
   border-radius: var(--radius-sm);
   padding: 0.4rem 0.55rem;
@@ -1722,6 +1730,15 @@ dialog[open] .dialog-panel {
   color: var(--muted);
   font-size: 0.7rem;
   white-space: nowrap;
+}
+
+.settings-tab > svg {
+  color: var(--faint);
+  stroke-width: 1.7;
+}
+
+.settings-tab-active > svg {
+  color: var(--accent);
 }
 
 .settings-tab-active {
@@ -1892,16 +1909,25 @@ dialog[open] .dialog-panel {
   margin-bottom: 0.45rem;
 }
 
+.settings-card-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.settings-card-title > svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+  stroke-width: 1.7;
+}
+
 .settings-card-heading h2 {
   margin: 0;
   color: var(--ink);
   font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.25;
-}
-
-.settings-card-heading > svg {
-  color: var(--faint);
 }
 
 .settings-copy {
@@ -2171,6 +2197,11 @@ dialog[open] .dialog-panel {
 
 .settings-footer-note:empty {
   display: none;
+}
+
+.settings-user {
+  color: var(--muted);
+  font-size: 0.7rem;
 }
 
 .settings-footer-note button {
@@ -2738,7 +2769,7 @@ dialog[open] .dialog-panel {
     color: var(--ink);
   }
 
-  .add-task-button:hover {
+  .column-add:hover {
     background: var(--accent-soft);
     color: var(--accent);
   }

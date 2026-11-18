@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Fingerprint } from "lucide-react";
 import { api, errorMessage } from "../lib/api";
 import { registerPasskey, supportsPasskeys, type Passkey } from "../lib/passkeys";
 import { usePasskey } from "../lib/use-passkey";
@@ -8,6 +9,7 @@ import { QueryFeedback } from "./query-feedback";
 import { SudoDialog } from "./sudo-dialog";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { SettingsHeading } from "./settings-heading";
 
 export function PasskeySettings() {
   const client = useQueryClient();
@@ -19,7 +21,7 @@ export function PasskeySettings() {
   const remove = useMutation({ mutationFn: (id: string) => api<void>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" }), onSuccess: () => client.invalidateQueries({ queryKey: ["passkeys"] }) });
   const pending = registration.pending || remove.isPending;
   return <section className="settings-card settings-card-wide">
-    <div className="settings-card-heading"><h2>Passkey</h2></div>
+    <SettingsHeading icon={Fingerprint} title="Passkey" />
     <p className="settings-copy">用设备指纹、面容或密码管理器登录。密码登录始终保留。</p>
     {supported ? <form className="form-stack" onSubmit={(event) => { event.preventDefault(); if (name.trim() && !pending) setAction("register"); }}>
       <div className="field"><label htmlFor="passkey-name">Passkey 名称</label><Input id="passkey-name" value={name} maxLength={80} placeholder="例如我的 Mac" disabled={pending} onChange={(event) => setName(event.target.value)} /></div>

@@ -1,9 +1,11 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { api, errorMessage, type Task, type TrashResponse } from "../lib/api";
 import { invalidateTaskData } from "../app/task-cache";
 import { formatDateTime } from "../lib/format";
 import { QueryFeedback } from "./query-feedback";
 import { Button } from "./ui/button";
+import { SettingsHeading } from "./settings-heading";
 
 export function TrashSettings() {
   const client = useQueryClient();
@@ -21,7 +23,7 @@ export function TrashSettings() {
   const lastCursor = query.data?.pages.at(-1)?.next_cursor;
   const cursorError = lastCursor && query.data?.pageParams.includes(lastCursor) ? new Error("回收站分页游标重复，请重试") : null;
   return <section className="settings-card">
-    <div className="settings-card-heading"><h2>回收站</h2></div>
+    <SettingsHeading icon={Trash2} title="回收站" />
     <p className="settings-copy">删除的任务保留 30 天，到期后永久清除。恢复会保留任务的项目、标签和记录。</p>
     <QueryFeedback pending={query.isFetching} error={query.error ?? cursorError} retry={() => { if (query.isFetchNextPageError) void query.fetchNextPage(); else void query.refetch(); }} />
     {restore.error ? <p className="form-error" role="alert">{errorMessage(restore.error)}</p> : null}

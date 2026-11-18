@@ -45,6 +45,8 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d
 - 生产 `TACK_PUBLIC_URL` 必须是 HTTPS；本地 HTTP 才允许非 `__Host-` Cookie。
 - 前端 strict TypeScript，禁止 `any`；颜色只用 token。
 - UI 保留暖白纸张与墨色的克制层级；删除无意义、重复或纯装饰标签/副标题，不隐藏有助扫读的任务元数据；新增页面和组件沿用一致的留白、字号、边框与按钮模式。
+- 判断“无意义标签”：同一信息在相邻位置重复（如页头用户名 + 页脚用户名、列头已有标题又在底部写“新建”）、纯协议/实现说明（“REST API”“单用户”）、无内容占位（“未分类”“#id”）一律删除；项目、用户标签、优先级、截止日期、Agent 状态属于扫读信息，保留。
+- 图标只用 `lucide-react`，尺寸 13–18px、`stroke-width` 1.6–1.7；图标必须表达动作或分类，不做纯装饰；已有文字的按钮优先加语义图标，不额外加第二个同名图标。
 - 动效只服务于状态反馈和空间关系，优先短促的 transform/opacity 过渡；必须尊重 `prefers-reduced-motion`，不得用动画、徽章或装饰制造噪声。
 - 窄屏优先保证主操作、任务状态和触控滚动可达；拖拽把手与内容操作分离，不得阻断页面纵向滚动。
 - API Token 只能走 Bearer；Token 管理、Session、密码和更新只接受网页 Session。

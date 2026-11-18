@@ -44,11 +44,28 @@ it("keeps only one inline task composer open across columns", async () => {
   const todoColumn = screen.getByRole("region", { name: "待办" });
   const inboxColumn = screen.getByRole("region", { name: "收件箱" });
 
-  await user.click(within(todoColumn).getByRole("button", { name: "新建" }));
+  await user.click(within(todoColumn).getByRole("button", { name: "在待办新建任务" }));
   expect(within(todoColumn).getByRole("textbox", { name: "新建待办任务" })).toHaveFocus();
 
-  await user.click(within(inboxColumn).getByRole("button", { name: "新建" }));
+  await user.click(within(inboxColumn).getByRole("button", { name: "在收件箱新建任务" }));
   expect(within(inboxColumn).getByRole("textbox", { name: "新建收件箱任务" })).toHaveFocus();
   expect(screen.queryByRole("textbox", { name: "新建待办任务" })).not.toBeInTheDocument();
   expect(screen.getAllByRole("textbox", { name: /^新建.+任务$/ })).toHaveLength(1);
+});
+
+it("does not repeat a footer hint under the capture composer", () => {
+  renderWithClient(<TestBoard />);
+  expect(screen.queryByRole("button", { name: "输入语法" })).not.toBeInTheDocument();
+  expect(screen.queryByText("⌘ / Ctrl ↵ 保存")).not.toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "记一笔" })).toHaveAttribute(
+    "aria-describedby",
+  );
+});
+
+it("keeps column actions in the header instead of repeating a new-task row", () => {
+  renderWithClient(<TestBoard />);
+  expect(screen.queryByRole("button", { name: "新建" })).not.toBeInTheDocument();
+  for (const name of ["收件箱", "待办", "进行中", "已完成"]) {
+    expect(screen.getByRole("button", { name: `在${name}新建任务` })).toBeInTheDocument();
+  }
 });

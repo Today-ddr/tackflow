@@ -36,7 +36,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     <main className="login-page">
       <section className="login-card" aria-labelledby="login-title">
         <div className="login-intro">
-          <p className="eyebrow">个人任务看板</p>
           <h1 id="login-title">Tack</h1>
           <p className="login-tagline">
             把念头钉住。写下，归档，继续。
@@ -88,7 +87,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           {passkey.error ? <p className="form-error" role="alert">{passkey.error}</p> : null}
         </div>
 
-        <p className="login-note">单用户 · 数据留在自己的服务器</p>
       </section>
     </main>
   );

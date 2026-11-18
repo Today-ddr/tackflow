@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FolderKanban, Plus, Tags } from "lucide-react";
 import { api, errorMessage, type Project, type ProjectColor, type Tag } from "../lib/api";
 import { invalidateTaskData } from "../app/task-cache";
 import { projectColors } from "./project-dialog";
@@ -9,6 +10,7 @@ import { SudoDialog } from "./sudo-dialog";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { SettingsHeading } from "./settings-heading";
 
 type Editor = { kind: "projects" | "tags"; item?: Project | Tag };
 
@@ -36,7 +38,7 @@ export function OrganizeSettings() {
 
   return <div className="settings-grid">
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>项目</h2><Button variant="quiet" type="button" onClick={() => setEditor({ kind: "projects" })}>新建项目</Button></div>
+      <SettingsHeading icon={FolderKanban} title="项目"><Button variant="quiet" type="button" onClick={() => setEditor({ kind: "projects" })}><Plus size={14} aria-hidden />新建项目</Button></SettingsHeading>
       <p className="settings-copy">用名称和颜色整理任务。归档后可随时恢复，任务会保留。</p>
       <QueryFeedback pending={projects.isPending} error={projects.error} retry={() => void projects.refetch()} />
       {archiveMutation.error ? <p className="form-error" role="alert">{errorMessage(archiveMutation.error)}</p> : null}
@@ -47,7 +49,7 @@ export function OrganizeSettings() {
       </div>)}</div>
     </section>
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>标签</h2><Button variant="quiet" type="button" onClick={() => setEditor({ kind: "tags" })}>新建标签</Button></div>
+      <SettingsHeading icon={Tags} title="标签"><Button variant="quiet" type="button" onClick={() => setEditor({ kind: "tags" })}><Plus size={14} aria-hidden />新建标签</Button></SettingsHeading>
       <p className="settings-copy">删除标签会解除关联，任务会保留。</p>
       <QueryFeedback pending={tags.isPending} error={tags.error} retry={() => void tags.refetch()} />
       {tags.data?.tags.length === 0 ? <p className="muted-copy">还没有标签。</p> : null}

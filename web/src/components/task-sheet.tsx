@@ -25,6 +25,7 @@ import { Input } from "./ui/input";
 import { useToast } from "./toast";
 import { safeExternalURL } from "../lib/integrations";
 import { invalidateTaskData } from "../app/task-cache";
+import { StatusIcon } from "./status-icon";
 
 const statuses: TaskStatus[] = ["inbox", "todo", "doing", "review", "done"];
 const priorities: TaskPriority[] = [0, 1, 2, 3];
@@ -202,6 +203,7 @@ export function TaskSheet({ taskID, projects, onClose }: TaskSheetProps) {
                     onClick={() => moveMutation.mutate(status)}
                     disabled={moveMutation.isPending || task.status === status}
                   >
+                    <StatusIcon status={status} size={13} />
                     {statusLabel(status)}
                   </button>
                 ))}

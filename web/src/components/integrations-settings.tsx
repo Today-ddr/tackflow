@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus, RefreshCw, Webhook as WebhookIcon, Workflow } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "../lib/api";
 import type { Webhook, WebhookDelivery } from "../lib/integrations";
@@ -9,6 +10,7 @@ import { SudoDialog } from "./sudo-dialog";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { Input } from "./ui/input";
+import { SettingsHeading } from "./settings-heading";
 
 const eventOptions = [{ value: "task.*", label: "任务变化" }, { value: "project.*", label: "项目变化" }, { value: "tag.*", label: "标签变化" }, { value: "*", label: "全部变化" }];
 type WebhookAction = { kind: "delete" | "toggle"; webhook: Webhook };
@@ -26,7 +28,7 @@ export function IntegrationsSettings() {
   });
   return <div className="settings-grid">
     <section className="settings-card settings-card-wide">
-      <div className="settings-card-heading"><h2>Webhook</h2><div className="settings-button-row"><button className="text-button" type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>刷新</button><Button variant="quiet" type="button" onClick={() => setEditor(null)}>新建 Webhook</Button></div></div>
+      <SettingsHeading icon={WebhookIcon} title="Webhook"><div className="settings-button-row"><button className="text-button" type="button" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw size={13} aria-hidden />刷新</button><Button variant="quiet" type="button" onClick={() => setEditor(null)}><Plus size={14} aria-hidden />新建 Webhook</Button></div></SettingsHeading>
       <p className="settings-copy">任务变化时通知接收服务。签名密钥仅在创建后显示一次，请妥善保存。</p>
       <QueryFeedback pending={query.isPending} error={query.error} retry={() => void query.refetch()} />
       {mutation.error ? <p className="form-error" role="alert">{errorMessage(mutation.error)}</p> : null}
@@ -37,7 +39,7 @@ export function IntegrationsSettings() {
         <div className="settings-button-row"><button className="text-button" type="button" aria-label={`投递记录 ${webhook.name}`} onClick={() => setDeliveries(webhook)}>投递记录</button><button className="text-button" type="button" disabled={mutation.isPending} aria-label={`编辑 Webhook ${webhook.name}`} onClick={() => setEditor(webhook)}>编辑</button><button className="text-button" type="button" disabled={mutation.isPending} aria-label={`${webhook.enabled ? "停用" : "启用"} Webhook ${webhook.name}`} onClick={() => { mutation.reset(); setAction({ kind: "toggle", webhook }); }}>{webhook.enabled ? "停用" : "启用"}</button><button className="text-button text-button-danger" type="button" disabled={mutation.isPending} aria-label={`删除 Webhook ${webhook.name}`} onClick={() => { mutation.reset(); setAction({ kind: "delete", webhook }); }}>删除</button></div>
       </div>)}</div>
     </section>
-    <section className="settings-card settings-card-wide"><div className="settings-card-heading"><h2>Codeg bridge</h2></div><p className="settings-copy">需要在运行 Codeg 的电脑上单独配置本地 CLI。只有待办中明确开启「允许 agent 领取」（agent_ready）的任务才会交给它执行。</p><p className="settings-copy">执行结果和关联链接会回到任务详情；此页面不会启动 agent。</p><p className="settings-copy">在<a href="/settings/connections">「Agent 连接」</a>生成「任务执行」用途的专用 API Key，并按项目限制范围。</p></section>
+    <section className="settings-card settings-card-wide"><SettingsHeading icon={Workflow} title="Codeg bridge" /><p className="settings-copy">需要在运行 Codeg 的电脑上单独配置本地 CLI。只有待办中明确开启「允许 agent 领取」（agent_ready）的任务才会交给它执行。</p><p className="settings-copy">执行结果和关联链接会回到任务详情；此页面不会启动 agent。</p><p className="settings-copy">在<a href="/settings/connections">「Agent 连接」</a>生成「任务执行」用途的专用 API Key，并按项目限制范围。</p></section>
     {editor !== undefined ? <WebhookEditor webhook={editor} onClose={() => setEditor(undefined)} onCreated={setSecret} /> : null}
     {deliveries ? <DeliveryDialog webhook={deliveries} onClose={() => setDeliveries(null)} /> : null}
     <SudoDialog open={action !== null} title={action?.kind === "delete" ? "删除 Webhook" : `${action?.webhook.enabled ? "停用" : "启用"} Webhook`} description={action?.kind === "delete" ? "删除后将停止待投递通知，任务会保留。" : "确认身份后更改通知状态。停用后停止待投递通知。"} onClose={() => setAction(null)} onSuccess={() => { if (action) mutation.mutate(action); }} />
