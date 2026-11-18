@@ -39,7 +39,6 @@ interface CaptureComposerProps {
   projects?: Project[];
   tags?: Tag[];
   autoFocus?: boolean;
-  onFocusChange?: (focused: boolean) => void;
 }
 
 type ComposerMenu = "project" | "tag" | "priority" | "due" | null;
@@ -51,7 +50,6 @@ export function CaptureComposer({
   projects = [],
   tags = [],
   autoFocus = false,
-  onFocusChange,
 }: CaptureComposerProps) {
   const client = useQueryClient();
   const { notify } = useToast();
@@ -133,7 +131,7 @@ export function CaptureComposer({
     applyText(setCaptureDue(text, value || null));
   };
 
-  return <form className={`capture-composer ${focused ? "capture-composer-focused" : ""}`} aria-label="快速收集" onSubmit={(event) => { event.preventDefault(); submit(); }} onFocus={() => { setFocused(true); onFocusChange?.(true); }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) { setFocused(false); setOpenMenu(null); onFocusChange?.(false); } }} onKeyDown={(event) => {
+  return <form className={`capture-composer ${focused ? "capture-composer-focused" : ""}`} aria-label="快速收集" onSubmit={(event) => { event.preventDefault(); submit(); }} onFocus={() => setFocused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) { setFocused(false); setOpenMenu(null); } }} onKeyDown={(event) => {
     if (event.key === "Escape" && openMenu) {
       event.stopPropagation();
       setOpenMenu(null);

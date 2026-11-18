@@ -71,7 +71,6 @@ export function Board({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>("inbox");
-  const [composerFocused, setComposerFocused] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const lastDragEnd = useRef(0);
   const sensors = useSensors(
@@ -284,10 +283,10 @@ export function Board({
           ) : null}
         </DragOverlay>
       </DndContext>
-      <div className={`board-composer-dock ${composerFocused ? "board-composer-dock-focused" : ""}`} onClick={(event) => {
+      <div className="board-composer-dock" onClick={(event) => {
         if (event.target === event.currentTarget && !window.getSelection()?.toString()) composerRef.current?.focus();
       }}>
-        <CaptureComposer text={captureText} onTextChange={onCaptureTextChange} inputRef={composerRef} projects={projects} tags={tags} onFocusChange={setComposerFocused} />
+        <CaptureComposer text={captureText} onTextChange={onCaptureTextChange} inputRef={composerRef} projects={projects} tags={tags} />
       </div>
     </section>
   );

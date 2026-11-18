@@ -2233,11 +2233,8 @@ dialog[open] .dialog-panel {
   .board-composer-dock {
     left: 1rem;
     right: 1rem;
-    bottom: max(calc(4.3rem + env(safe-area-inset-bottom)), var(--visual-viewport-inset, 0px));
+    bottom: max(calc(4.55rem + env(safe-area-inset-bottom)), var(--visual-viewport-inset, 0px));
   }
-
-  .board-composer-dock-focused { bottom: max(0.75rem, var(--visual-viewport-inset, 0px)); }
-  body:has(.board-composer-dock-focused) .mobile-nav { transform: translateY(100%); visibility: hidden; }
 
   .app-frame {
     display: block;
