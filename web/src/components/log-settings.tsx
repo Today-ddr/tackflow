@@ -70,8 +70,10 @@ export function LogSettings() {
     </form>
     <div className="log-toolbar">
       <input type="search" aria-label="搜索日志内容" placeholder="搜索路由、错误码或事件…" value={search} onChange={(event) => { setSearch(event.target.value); setCopied(false); }} />
-      <button className="quiet-button" type="button" disabled={!entries.length || logs.isFetching} onClick={() => void copy()}><Copy size={14} aria-hidden />复制 JSONL</button>
-      <button className="quiet-button" type="button" disabled={!entries.length || logs.isFetching} onClick={download}><Download size={14} aria-hidden />下载</button>
+      <div className="log-actions">
+        <button className="quiet-button" type="button" disabled={!entries.length || logs.isFetching} onClick={() => void copy()}><Copy size={14} aria-hidden />复制 JSONL</button>
+        <button className="quiet-button" type="button" disabled={!entries.length || logs.isFetching} onClick={download}><Download size={14} aria-hidden />下载</button>
+      </div>
     </div>
     <QueryFeedback pending={logs.isPending} error={logs.error} retry={() => void logs.refetch()} />
     {copied ? <p className="settings-copy" role="status">日志已复制</p> : null}

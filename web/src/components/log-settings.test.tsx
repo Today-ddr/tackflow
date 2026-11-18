@@ -39,3 +39,13 @@ it("shows copy failures and preserves the readable log entries", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("复制失败");
   expect(screen.getByText("GET /api/v1/tasks")).toBeInTheDocument();
 });
+
+it("keeps copy and download together as distinct actions", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => String(input).includes("/logs") ? json({ entries: [{ time: "2026-11-18T00:00:00Z", level: "INFO", event: "request", route: "GET /api/v1/tasks", status: 200 }] }) : json({})));
+  renderWithClient(<SettingsPage me={me} path="/settings/logs" navigate={vi.fn()} onLogout={vi.fn()} />);
+  await screen.findByText("GET /api/v1/tasks");
+  const actions = document.querySelector(".log-actions");
+  expect(actions).not.toBeNull();
+  expect(actions?.querySelectorAll("button")).toHaveLength(2);
+  expect(screen.getByRole("button", { name: "下载" })).toBeInTheDocument();
+});
