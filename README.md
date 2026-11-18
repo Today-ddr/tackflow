@@ -4,15 +4,15 @@ Tack（图钉）是一个单用户、单看板的自建任务收集器。手机 
 
 源码仓库：[Today-ddr/tackflow](https://github.com/Today-ddr/tackflow)。Go 模块为 `github.com/today-ddr/tackflow`，应用和命令名继续使用 Tack / `tack`。
 
-当前版本：**0.2.0（M1–M4 可用版）**。
+当前版本：**0.3.0（M1–M5 可用版）**。
 
 ## 能力
 
 - Inbox / 待办 / 进行中 / 待验收 / 已完成五列看板，dnd-kit 拖拽，失败自动回滚。
-- 快速收集语法：`#标签`、`@项目`、`!p0`–`!p3`、`^今天/明天/后天/日期`。
+- 快速收集语法：`#标签`、`@项目`、`!p0`–`!p3`、`^今天/明天/后天/日期`；也可用按钮直接选项目、标签、优先级和日期，并保留手动编辑。
 - 项目彩色分类、标签、任务详情、时间线、评论、软删除和回收站清理。
 - 手机全屏 `/capture`、PWA manifest、底部导航和安全区适配。
-- 单用户密码 + Session Cookie + sudo；脚本用可撤销、按 scope 限权的 API Token。
+- 单用户密码 + Session Cookie + sudo；Passkey 登录；脚本和 agent 用可撤销、按 scope 与有效期限权的 API Key。
 - API v1：任务 CRUD/move/comments/events、capture、项目、标签、设置、JSON/CSV 导出。
 - GitHub Release 检查、可调频率、侧栏红点、网页内 updater、更新前备份和失败自动回滚。
 - Go 单二进制 + SQLite + 内嵌前端；Docker Compose 只暴露 Caddy。

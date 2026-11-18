@@ -304,7 +304,7 @@ Session 响应为 `auth_kind:"session", token:null`，不能据此判断 Key 可
 
 ```json
 {
-  "current_version": "0.2.0",
+  "current_version": "0.3.0",
   "latest_version": "v0.2.1",
   "update_available": true,
   "interval_hours": 24,
@@ -314,7 +314,7 @@ Session 响应为 `auth_kind:"session", token:null`，不能据此判断 Key 可
   "release_url": "https://github.com/.../releases/tag/v0.2.1",
   "published_at": "...",
   "configured": true,
-  "updater": {"current_tag":"v0.2.0","previous_tag":"","status":"success","message":"","updated_at":"...","backup_path":""}
+  "updater": {"current_tag":"v0.3.0","previous_tag":"","status":"success","message":"","updated_at":"...","backup_path":""}
 }
 ```
 

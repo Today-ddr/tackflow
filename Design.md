@@ -1,7 +1,7 @@
 # Tack 设计文档
 
 > 项目名：**Tack**（图钉）· 中文叫「图钉」
-> 状态：M1–M4 已实现 · v0.2.0 · 2026-11-16
+> 状态：M1–M5 已实现 · v0.3.0 · 2026-11-18
 > 仓库：`github.com/Today-ddr/tackflow` · Go 模块：`github.com/today-ddr/tackflow`
 > 一句话：把念头钉在板上，让脚本和 agent 也能看见。
 
@@ -894,7 +894,7 @@ v1 不追求 E2E 覆盖率；更新流程靠 staging 手测 + updater 单元测�
 | M4 打磨 | 搜索、⌘K、暗色、PWA、导出、备份 | 日常自用一周无阻断 |
 | M5 扩展 | Passkey、Codeg bridge、webhook、SSE | 按需 |
 
-当前实现状态（2026-11-16）：M0–M4 已落地；工作分支在 `v0.2.0` 基础上追加 M5，尚未发布新版本。更新链路继续使用 app 检查、侧栏红点、可调频率、updater、备份和失败回滚。
+当前实现状态（2026-11-18）：M0–M5 已落地并发布为 `v0.3.0`。更新链路继续使用 app 检查、侧栏红点、可调频率、updater、备份和失败回滚。
 
 M5 包含 Passkey、独立 Codeg bridge、持久化 Webhook 与 Session SSE；同时补齐回收站、项目/标签管理、全部游标页加载、搜索前缀和 Token 资源范围。详细接口见 `docs/api.md`，桥接配置见 `docs/codeg-bridge.md`。真实设备 Passkey、实际 Codeg 执行和公网接收端需在对应部署环境验收。
 
@@ -938,4 +938,4 @@ SQLite 事务内写入资源事件；SSE 用持久化序号恢复，Webhook 用�
 ## 23. 待定
 
 - 域名（部署前定）。
-- M5 发布版本号与目标部署环境（当前仅本地提交，不自动发布）。
+- M5 目标部署环境。

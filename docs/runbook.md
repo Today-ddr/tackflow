@@ -35,8 +35,8 @@ openssl rand -hex 32      # TACK_UPDATER_TOKEN
 ```dotenv
 COMPOSE_PROJECT_NAME=tack
 TACK_GHCR_OWNER=today-ddr
-TACK_IMAGE_TAG=v0.2.0
-TACK_UPDATER_TAG=v0.2.0
+TACK_IMAGE_TAG=v0.3.0
+TACK_UPDATER_TAG=v0.3.0
 TACK_SITE_ADDRESS=tack.example.com
 TACK_PUBLIC_URL=https://tack.example.com
 TACK_ADMIN_USERNAME=admin
