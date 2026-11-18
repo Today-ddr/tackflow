@@ -71,6 +71,7 @@ export function Board({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [doneOpen, setDoneOpen] = useState(false);
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>("inbox");
+  const [creatingIn, setCreatingIn] = useState<TaskStatus | null>(null);
   const [entering, setEntering] = useState(true);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const lastDragEnd = useRef(0);
@@ -275,6 +276,9 @@ export function Board({
                 onStatusChange={(id, targetStatus) => {
                   if (!moveMutation.isPending) moveMutation.mutate({ id, status: targetStatus });
                 }}
+                creating={creatingIn === status}
+                onStartCreating={() => setCreatingIn(status)}
+                onStopCreating={() => setCreatingIn(null)}
                 movePending={moveMutation.isPending}
                 mobileHidden={filter.kind !== "inbox" && mobileStatus !== status}
               />
@@ -305,6 +309,9 @@ function BoardColumn({
   onToggle,
   onOpenTask,
   onStatusChange,
+  creating,
+  onStartCreating,
+  onStopCreating,
   movePending,
   mobileHidden,
 }: {
@@ -314,6 +321,9 @@ function BoardColumn({
   onToggle: () => void;
   onOpenTask: (taskID: number) => void;
   onStatusChange: (taskID: number, status: TaskStatus) => void;
+  creating: boolean;
+  onStartCreating: () => void;
+  onStopCreating: () => void;
   movePending: boolean;
   mobileHidden: boolean;
 }) {
@@ -363,7 +373,12 @@ function BoardColumn({
                     : "还没有任务"}
               </div>
             ) : null}
-            <InlineComposer status={status} />
+            <InlineComposer
+              status={status}
+              open={creating}
+              onOpen={onStartCreating}
+              onClose={onStopCreating}
+            />
           </div>
         </SortableContext>
       ) : null}
@@ -371,8 +386,17 @@ function BoardColumn({
   );
 }
 
-function InlineComposer({ status }: { status: TaskStatus }) {
-  const [open, setOpen] = useState(false);
+function InlineComposer({
+  status,
+  open,
+  onOpen,
+  onClose,
+}: {
+  status: TaskStatus;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
   const [title, setTitle] = useState("");
   const queryClient = useQueryClient();
   const { notify } = useToast();
@@ -390,7 +414,7 @@ function InlineComposer({ status }: { status: TaskStatus }) {
           }),
     onSuccess: () => {
       setTitle("");
-      setOpen(false);
+      onClose();
       void invalidateTaskData(queryClient);
     },
     onError: (error) => notify(errorMessage(error), "error"),
@@ -398,7 +422,7 @@ function InlineComposer({ status }: { status: TaskStatus }) {
 
   if (!open) {
     return (
-      <button className="add-task-button" type="button" onClick={() => setOpen(true)}>
+      <button className="add-task-button" type="button" onClick={onOpen}>
         <Plus size={14} aria-hidden />
         新建
       </button>
@@ -424,7 +448,7 @@ function InlineComposer({ status }: { status: TaskStatus }) {
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing || event.keyCode === 229) return;
           if (event.key === "Escape") {
-            setOpen(false);
+            onClose();
             setTitle("");
           }
         }}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { Board } from "./board";
@@ -36,4 +36,19 @@ it("focuses capture only from blank board space and leaves controls independent"
   await user.click(screen.getByRole("button", { name: "打开任务 修复登录" }));
   expect(input).not.toHaveFocus();
   expect(open).toHaveBeenCalledWith(1);
+});
+
+it("keeps only one inline task composer open across columns", async () => {
+  renderWithClient(<TestBoard />);
+  const user = userEvent.setup();
+  const todoColumn = screen.getByRole("region", { name: "待办" });
+  const inboxColumn = screen.getByRole("region", { name: "收件箱" });
+
+  await user.click(within(todoColumn).getByRole("button", { name: "新建" }));
+  expect(within(todoColumn).getByRole("textbox", { name: "新建待办任务" })).toHaveFocus();
+
+  await user.click(within(inboxColumn).getByRole("button", { name: "新建" }));
+  expect(within(inboxColumn).getByRole("textbox", { name: "新建收件箱任务" })).toHaveFocus();
+  expect(screen.queryByRole("textbox", { name: "新建待办任务" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("textbox", { name: /^新建.+任务$/ })).toHaveLength(1);
 });
